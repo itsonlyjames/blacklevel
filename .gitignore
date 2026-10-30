@@ -16,3 +16,6 @@ launcher/design/tv/
 
 # Menu test captures
 menubar/screenshots/
+
+# Packaged release files
+release/

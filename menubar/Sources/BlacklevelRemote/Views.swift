@@ -373,8 +373,25 @@ struct RemotePad: View {
 
     private var moreKeys: some View {
         Menu {
-            ForEach(available.sorted(), id: \.self) { name in
-                Button(name) { store.press(name) }
+            ForEach(RemoteKeyGroups.sections) { section in
+                let keys = section.keys.filter { available.contains($0.name) }
+                if !keys.isEmpty {
+                    Section(section.title) {
+                        ForEach(keys) { key in Button(key.title) { store.press(key.name) } }
+                    }
+                }
+            }
+            let numbers = RemoteKeyGroups.numbers.filter { available.contains($0.name) }
+            if !numbers.isEmpty {
+                Menu("Numbers") {
+                    ForEach(numbers) { key in Button(key.title) { store.press(key.name) } }
+                }
+            }
+            let others = RemoteKeyGroups.others(in: available)
+            if !others.isEmpty {
+                Menu("Other keys") {
+                    ForEach(others, id: \.self) { name in Button(RemoteKeyGroups.title(for: name)) { store.press(name) } }
+                }
             }
         } label: {
             // Fill the whole tile, so the click target is the 40×40 square and not just the glyph.
@@ -388,6 +405,104 @@ struct RemotePad: View {
         .frame(width: size, height: size)
         .background(Theme.tile)
         .help("All remote keys")
+    }
+}
+
+/// The TV reports 152 IRCC keys; the "…" menu shows the useful ones grouped, tucks the rest into a submenu,
+/// and never lists service, demo or pairing keys that can put the TV into odd states.
+enum RemoteKeyGroups {
+    struct Key: Identifiable {
+        let name: String
+        let title: String
+        var id: String { name }
+    }
+
+    struct Group: Identifiable {
+        let title: String
+        let keys: [Key]
+        var id: String { title }
+    }
+
+    static let sections: [Group] = [
+        Group(title: "Menus", keys: [
+            Key(name: "Options", title: "Options"),
+            Key(name: "ActionMenu", title: "Action menu"),
+            Key(name: "SyncMenu", title: "BRAVIA Sync menu"),
+            Key(name: "Display", title: "Info"),
+            Key(name: "GGuide", title: "Guide"),
+            Key(name: "Help", title: "Help"),
+        ]),
+        Group(title: "Inputs", keys: [
+            Key(name: "Input", title: "Input selector"),
+            Key(name: "Hdmi1", title: "HDMI 1"),
+            Key(name: "Hdmi2", title: "HDMI 2"),
+            Key(name: "Hdmi3", title: "HDMI 3"),
+            Key(name: "Hdmi4", title: "HDMI 4"),
+        ]),
+        Group(title: "Playback", keys: [
+            Key(name: "Play", title: "Play"),
+            Key(name: "Pause", title: "Pause"),
+            Key(name: "Stop", title: "Stop"),
+            Key(name: "Prev", title: "Previous"),
+            Key(name: "Next", title: "Next"),
+            Key(name: "SubTitle", title: "Subtitles"),
+            Key(name: "Audio", title: "Audio track"),
+        ]),
+        Group(title: "Picture & sound", keys: [
+            Key(name: "PictureMode", title: "Picture mode"),
+            Key(name: "Wide", title: "Screen format"),
+            Key(name: "PictureOff", title: "Picture off"),
+            Key(name: "AudioOutput_Toggle", title: "Switch audio output"),
+        ]),
+        Group(title: "Colour buttons", keys: [
+            Key(name: "Red", title: "Red"),
+            Key(name: "Green", title: "Green"),
+            Key(name: "Yellow", title: "Yellow"),
+            Key(name: "Blue", title: "Blue"),
+        ]),
+        Group(title: "Apps", keys: [
+            Key(name: "Netflix", title: "Netflix"),
+            Key(name: "YouTube", title: "YouTube"),
+            Key(name: "GooglePlay", title: "Google Play"),
+        ]),
+        Group(title: "Power", keys: [
+            Key(name: "SleepTimer", title: "Sleep timer"),
+        ]),
+    ]
+
+    static let numbers: [Key] = (1...9).map { Key(name: "Num\($0)", title: "\($0)") }
+        + [Key(name: "Num0", title: "0"), Key(name: "Enter", title: "Enter")]
+
+    /// Keys that change service, demo, pairing or shop state; they never appear in the menu.
+    private static let hidden: Set<String> = [
+        "DemoMode", "DemoSurround", "ShopRemoteControlForcedDynamic", "AutoParingRequest", "B2bCustomizeKey",
+        "DARWINLOOP", "MicPressedFromPairedRC", "MicPressedFromUnpairedRC", "FlashPlus", "FlashMinus", "WakeUp",
+        "PowerOff", "TvPower", "Sleep",
+    ]
+
+    /// Keys already on the pad, so they aren't repeated in "Other keys".
+    private static let onPad: Set<String> = [
+        "Up", "Down", "Left", "Right", "Confirm", "Return", "Home", "Rewind", "Forward", "PlayPause",
+        "VolumeUp", "VolumeDown", "Mute", "CursorUp", "CursorDown", "CursorLeft", "CursorRight", "DpadCenter", "Exit",
+    ]
+
+    static func others(in available: Set<String>) -> [String] {
+        let listed = Set(sections.flatMap(\.keys).map(\.name) + numbers.map(\.name))
+        return available.subtracting(listed).subtracting(hidden).subtracting(onPad)
+            .filter { !$0.hasPrefix("PartnerApp") }
+            .sorted { title(for: $0).localizedCaseInsensitiveCompare(title(for: $1)) == .orderedAscending }
+    }
+
+    /// "ChannelUp" -> "Channel up", "Tv_Radio" -> "TV radio".
+    static func title(for name: String) -> String {
+        let spaced = name.replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "([a-z0-9])([A-Z])", with: "$1 $2", options: .regularExpression)
+        let words = spaced.split(separator: " ").enumerated().map { index, word -> String in
+            let upper = word.uppercased()
+            if ["TV", "EPG", "BS", "CS", "PAP", "AD", "BSCS", "RGB", "3D", "STB", "ACS"].contains(upper) { return upper }
+            return index == 0 ? word.prefix(1).uppercased() + word.dropFirst() : word.lowercased()
+        }
+        return words.joined(separator: " ")
     }
 }
 

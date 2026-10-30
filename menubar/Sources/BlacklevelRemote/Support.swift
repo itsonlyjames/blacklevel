@@ -163,3 +163,12 @@ enum Shell {
         return String(data: data, encoding: .utf8)
     }
 }
+
+extension String {
+    /// The TV sends some names HTML-escaped ("Timers &amp; Clock").
+    var htmlDecoded: String {
+        guard contains("&") else { return self }
+        return [("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'"), ("&apos;", "'"), ("&amp;", "&")]
+            .reduce(self) { $0.replacingOccurrences(of: $1.0, with: $1.1) }
+    }
+}

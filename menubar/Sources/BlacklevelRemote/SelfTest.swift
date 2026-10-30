@@ -111,21 +111,34 @@ enum SelfTest {
 @MainActor
 enum Timing {
     static func run() async {
+        // Time to a populated menu: straight from the disk cache when there is one, otherwise after the first refresh.
+        let launch = ContinuousClock.now
         let store = TVStore()
+        if store.hasCachedState {
+            print(String(format: "%-28@ %5lld ms  (disk cache)", "launch → populated menu" as NSString, milliseconds(since: launch)))
+        }
         var publishes = 0
         let token = store.objectWillChange.sink { publishes += 1 }
         func measure(_ name: String, _ body: () async -> Void) async {
             publishes = 0
             let start = ContinuousClock.now
             await body()
-            let ms = (ContinuousClock.now - start).components.attoseconds / 1_000_000_000_000_000
-                + (ContinuousClock.now - start).components.seconds * 1000
+            let ms = milliseconds(since: start)
             print(String(format: "%-28@ %5lld ms  %3d publishes", name as NSString, ms, publishes))
         }
+        let hadCache = store.hasCachedState
         await measure("first open (cold refresh)") { await store.refresh() }
+        if !hadCache, store.hasCachedState {
+            print(String(format: "%-28@ %5lld ms  (network)", "launch → populated menu" as NSString, milliseconds(since: launch)))
+        }
         await measure("second open (warm refresh)") { await store.refresh() }
         for i in 1...3 { await measure("poll \(i)") { await store.refreshLive() } }
         _ = token
         exit(0)
+    }
+
+    private static func milliseconds(since start: ContinuousClock.Instant) -> Int64 {
+        let elapsed = (ContinuousClock.now - start).components
+        return elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
     }
 }

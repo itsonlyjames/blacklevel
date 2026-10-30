@@ -17,6 +17,9 @@ struct BlacklevelRemoteApp: App {
         if CommandLine.arguments.contains("--timing") {
             Task { await Timing.run() }
         }
+        if CommandLine.arguments.contains("--window") {
+            Task { @MainActor in DebugWindow.open() }
+        }
     }
 
     var body: some Scene {
@@ -34,6 +37,57 @@ struct BlacklevelRemoteApp: App {
     }
 }
 
+// MARK: - Theme
+
+/// The launcher's palette (launcher/app/assets/index.html), so the remote and the TV look like one thing.
+enum Theme {
+    static let bg = Color(red: 0.051, green: 0.043, blue: 0.035)
+    static let tile = Color(red: 0.105, green: 0.094, blue: 0.082)
+    static let tileHover = Color(red: 0.16, green: 0.145, blue: 0.125)
+    static let ink = Color(red: 0.91, green: 0.886, blue: 0.83)
+    static let dim = Color(red: 0.47, green: 0.445, blue: 0.41)
+    static let line = Color.white.opacity(0.07)
+    static let accent = Color(red: 0.91, green: 0.6, blue: 0.36)
+    static let twoColumns = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
+}
+
+/// Flat, square-cornered tile. Labels set their own size.
+struct TileStyle: ButtonStyle {
+    var prominent = false
+    func makeBody(configuration: Configuration) -> some View { Tile(configuration: configuration, prominent: prominent) }
+
+    private struct Tile: View {
+        let configuration: ButtonStyle.Configuration
+        let prominent: Bool
+        @Environment(\.isEnabled) private var enabled
+        @State private var hovering = false
+
+        var body: some View {
+            configuration.label
+                .font(.system(size: 12))
+                .foregroundStyle(prominent ? Theme.accent : Theme.ink)
+                .background(configuration.isPressed ? Theme.accent.opacity(0.3) : hovering ? Theme.tileHover : Theme.tile)
+                .contentShape(Rectangle())
+                .opacity(enabled ? 1 : 0.35)
+                .onHover { hovering = $0 }
+        }
+    }
+}
+
+struct SectionLabel: View {
+    let text: String
+    var body: some View {
+        Text(text.uppercased())
+            .font(.system(size: 10, weight: .medium))
+            .tracking(1.2)
+            .foregroundStyle(Theme.dim)
+    }
+}
+
+private struct Rule: View {
+    var body: some View { Theme.line.frame(height: 1) }
+}
+
 // MARK: - Menu
 
 struct MenuView: View {
@@ -41,20 +95,25 @@ struct MenuView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             header
             if let message = store.message {
-                Label(message, systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
+                Text(message).font(.caption).foregroundStyle(Theme.accent)
             } else if store.authorized == false {
-                Label("Set a PSK in Settings to control the TV", systemImage: "key.fill")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                Text("Set a pre-shared key in Settings to control the TV").font(.caption).foregroundStyle(Theme.dim)
+            }
+            if store.isOn, let issue = store.loadIssue {
+                HStack(spacing: 8) {
+                    Text(issue).font(.caption).foregroundStyle(Theme.accent).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    Button("Retry", action: store.retryLoad)
+                        .buttonStyle(TileStyle())
+                        .font(.caption)
+                        .frame(height: 22)
+                }
             }
 
-            if store.isOn {
-                Divider()
+            if store.isOn || (!store.liveChecked && store.hasCachedState) {
                 // The menu window can't grow past the screen, so the body scrolls once it's taller than that.
                 ScrollView {
                     controls
@@ -63,6 +122,7 @@ struct MenuView: View {
                         })
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.never)
                 .frame(height: min(contentHeight, maxScrollHeight))
                 .onPreferenceChange(ContentHeightKey.self) { height in
                     // Whole points only, so sub-pixel layout passes don't keep resizing the window.
@@ -71,11 +131,15 @@ struct MenuView: View {
                 }
             }
 
-            Divider()
+            Rule()
             footer
         }
-        .padding(14)
-        .frame(width: 340)
+        .padding(16)
+        .frame(width: 320)
+        .background(Theme.bg)
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.accent)
+        .environment(\.colorScheme, .dark)
         .onAppear { store.startPolling() }
         .onDisappear { store.stopPolling() }
     }
@@ -85,37 +149,38 @@ struct MenuView: View {
     @State private var maxScrollHeight: CGFloat = max((NSScreen.main?.visibleFrame.height ?? 800) - 200, 300)
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 18) {
             VolumeRow()
             RemotePad()
             if !store.sources.isEmpty { InputsGrid() }
-            if !store.apps.isEmpty { AppsGroup() }
-            SettingsGroup(title: "Picture", systemImage: "sparkles.tv", settings: store.pictureSettings, picture: true)
-            SettingsGroup(title: "Sound", systemImage: "speaker.wave.2", settings: store.soundSettings, picture: false)
+            if !store.apps.isEmpty { AppSearch() }
+            SettingsGroup(title: "Picture", settings: store.pictureSettings, picture: true)
+            SettingsGroup(title: "Sound", settings: store.soundSettings, picture: false)
             if store.authorized == true { TextSender() }
         }
-        .padding(.trailing, 2)
     }
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: "tv")
-                .font(.title2)
-                .foregroundStyle(store.isOn ? Color.accentColor : .secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(store.model).font(.headline)
-                Text(statusText).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Circle()
+                .fill(store.isOn ? Theme.accent : Theme.dim.opacity(0.5))
+                .frame(width: 6, height: 6)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(store.model).font(.system(size: 13, weight: .semibold))
+                Text(statusText).font(.caption).foregroundStyle(Theme.dim).lineLimit(1)
             }
             Spacer()
             Button(action: store.togglePower) {
                 Image(systemName: "power")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(store.isOn ? .red : .green)
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 30, height: 30)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(TileStyle(prominent: store.isOn))
             // The menu window gives its first control keyboard focus, so Space/Return right after opening
             // would turn the TV off. Keep power out of the focus chain.
             .focusable(false)
+            // Until the first power check answers, a press can't know whether it should turn the TV on or off.
+            .disabled(!store.liveChecked && !store.host.isEmpty)
             .help(store.isOn ? "Turn off" : "Turn on")
         }
     }
@@ -124,13 +189,14 @@ struct MenuView: View {
         switch store.power {
         case "active": return store.nowPlaying.map { "On · \($0)" } ?? "On"
         case "standby": return "Standby"
-        case nil: return "Not connected · \(store.host)"
+        case nil where !store.liveChecked && !store.host.isEmpty: return "Connecting…"
+        case nil: return store.host.isEmpty ? "Looking for a TV…" : "Not connected · \(store.host)"
         default: return store.power ?? ""
         }
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 14) {
             Button("Settings…") {
                 openWindow(id: "settings")
                 NSApp.activate(ignoringOtherApps: true)
@@ -144,8 +210,9 @@ struct MenuView: View {
                 .help("Refresh")
             Button("Quit") { NSApp.terminate(nil) }
         }
-        .buttonStyle(.borderless)
-        .font(.callout)
+        .buttonStyle(.plain)
+        .font(.system(size: 12))
+        .foregroundStyle(Theme.dim)
     }
 }
 
@@ -164,22 +231,28 @@ struct VolumeRow: View {
     @State private var editing = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Button(action: store.toggleMute) {
                 Image(systemName: store.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .frame(width: 20)
+                    .font(.system(size: 12))
+                    .foregroundStyle(store.muted ? Theme.accent : Theme.dim)
+                    .frame(width: 18)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             Slider(value: $value, in: 0...max(store.maxVolume, 1)) { isEditing in
                 editing = isEditing
                 store.volumeEditing = isEditing
                 if !isEditing { store.setVolume(value) }
             }
-            Text("\(Int(value.rounded()))")
+            .controlSize(.small)
+            Text(store.liveChecked ? "\(Int(value.rounded()))" : "–")
+                .font(.system(size: 12))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(width: 26, alignment: .trailing)
+                .foregroundStyle(Theme.dim)
+                .frame(width: 24, alignment: .trailing)
         }
+        // Volume and mute are never cached; until the TV answers there's nothing true to show.
+        .disabled(!store.liveChecked)
         .onAppear { value = store.volume }
         .onChange(of: store.volume) { _, new in if !editing { value = new } }
     }
@@ -187,24 +260,66 @@ struct VolumeRow: View {
 
 // MARK: - Apps
 
-/// Same disclosure style as Picture and Sound, with apps as buttons like the inputs.
-struct AppsGroup: View {
+/// A search field instead of the full list: the TV reports 40-odd apps, most of them Sony extras.
+/// With no query it shows the last few apps opened from here; Return opens the first match.
+struct AppSearch: View {
     @EnvironmentObject var store: TVStore
+    @State private var query = ""
+    @AppStorage("recentApps") private var recentURIs = ""
+
+    private var recents: [TVApp] {
+        recentURIs.split(separator: "\n").compactMap { uri in store.apps.first { $0.uri == uri } }
+    }
+
+    private var results: [TVApp] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return recents }
+        let matches = store.apps.filter { $0.title.localizedCaseInsensitiveContains(q) }
+        // Names that start with the query first ("pl" → Plex before Google Play).
+        return matches.filter { $0.title.lowercased().hasPrefix(q.lowercased()) }
+            + matches.filter { !$0.title.lowercased().hasPrefix(q.lowercased()) }
+    }
 
     var body: some View {
-        DisclosureGroup {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                ForEach(store.apps) { app in
-                    Button { store.launch(app) } label: {
-                        Text(app.title).lineLimit(1).frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(text: "Apps")
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Theme.dim)
+                TextField("Search \(store.apps.count) apps", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .onSubmit { if let first = results.first { open(first) } }
+                if !query.isEmpty {
+                    Button { query = "" } label: { Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)) }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Theme.dim)
                 }
             }
-            .padding(.top, 4)
-        } label: {
-            Label("Apps", systemImage: "square.grid.2x2")
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(Theme.tile)
+
+            let shown = Array(results.prefix(6))
+            if !shown.isEmpty {
+                LazyVGrid(columns: Theme.twoColumns, spacing: 2) {
+                    ForEach(shown) { app in
+                        Button { open(app) } label: {
+                            Text(app.title).lineLimit(1).padding(.horizontal, 6).frame(maxWidth: .infinity, minHeight: 30)
+                        }
+                        .buttonStyle(TileStyle())
+                    }
+                }
+            } else if !query.isEmpty {
+                Text("No app matches “\(query)”").font(.caption).foregroundStyle(Theme.dim)
+            }
         }
+    }
+
+    private func open(_ app: TVApp) {
+        store.launch(app)
+        query = ""
+        let others = recentURIs.split(separator: "\n").map(String.init).filter { $0 != app.uri }
+        recentURIs = ([app.uri] + others).prefix(4).joined(separator: "\n")
     }
 }
 
@@ -212,6 +327,7 @@ struct AppsGroup: View {
 
 struct RemotePad: View {
     @EnvironmentObject var store: TVStore
+    private let size: CGFloat = 40
 
     /// Keys the pad can send: IRCC names the TV reported, or the ADB fallback set.
     private var available: Set<String> {
@@ -225,44 +341,32 @@ struct RemotePad: View {
     }
 
     private var pad: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(spacing: 4) {
-                key("Up", "chevron.up")
-                HStack(spacing: 4) {
-                    key("Left", "chevron.left")
-                    key("Confirm", "circle.fill", prominent: true)
-                    key("Right", "chevron.right")
-                }
-                key("Down", "chevron.down")
+        HStack(alignment: .top, spacing: 0) {
+            Grid(horizontalSpacing: 2, verticalSpacing: 2) {
+                GridRow { Color.clear.frame(width: size, height: size); key("Up", "chevron.up"); Color.clear.frame(width: size, height: size) }
+                GridRow { key("Left", "chevron.left"); key("Confirm", "circle.fill", prominent: true); key("Right", "chevron.right") }
+                GridRow { Color.clear.frame(width: size, height: size); key("Down", "chevron.down"); Color.clear.frame(width: size, height: size) }
             }
-            VStack(spacing: 6) {
-                HStack(spacing: 6) {
-                    key("Return", "arrow.uturn.backward")
-                    key("Home", "house")
-                }
-                HStack(spacing: 6) {
+            Spacer(minLength: 16)
+            Grid(horizontalSpacing: 2, verticalSpacing: 2) {
+                GridRow { key("Return", "arrow.uturn.backward"); key("Home", "house"); moreKeys }
+                GridRow {
                     key("Rewind", "backward.fill")
                     key(available.contains("Play") ? "Play" : "Pause", "playpause.fill")
                     key("Forward", "forward.fill")
                 }
-                HStack(spacing: 6) {
-                    key("VolumeDown", "speaker.minus")
-                    key("VolumeUp", "speaker.plus")
-                    moreKeys
-                }
+                GridRow { key("VolumeDown", "minus"); key("Mute", "speaker.slash"); key("VolumeUp", "plus") }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder
     private func key(_ name: String, _ symbol: String, prominent: Bool = false) -> some View {
         Button { store.press(name) } label: {
             Image(systemName: symbol)
-                .font(prominent ? .system(size: 9) : .body)
-                .frame(width: 30, height: 26)
+                .font(.system(size: prominent ? 7 : 12, weight: .medium))
+                .frame(width: size, height: size)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(TileStyle(prominent: prominent))
         .disabled(!available.contains(name))
         .help(name)
     }
@@ -273,11 +377,16 @@ struct RemotePad: View {
                 Button(name) { store.press(name) }
             }
         } label: {
+            // Fill the whole tile, so the click target is the 40×40 square and not just the glyph.
             Image(systemName: "ellipsis")
+                .frame(width: size, height: size)
+                .contentShape(Rectangle())
         }
-        .menuStyle(.button)
+        .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .frame(width: 38)
+        .tint(Theme.ink)
+        .frame(width: size, height: size)
+        .background(Theme.tile)
         .help("All remote keys")
     }
 }
@@ -288,15 +397,15 @@ struct InputsGrid: View {
     @EnvironmentObject var store: TVStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Inputs").font(.caption).foregroundStyle(.secondary)
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(text: "Inputs")
+            LazyVGrid(columns: Theme.twoColumns, spacing: 2) {
                 ForEach(store.sources) { source in
                     Button { store.play(source) } label: {
-                        Text(source.title).lineLimit(1).frame(maxWidth: .infinity)
+                        Text(source.title).lineLimit(1).padding(.horizontal, 6).frame(maxWidth: .infinity, minHeight: 30)
                     }
-                    .buttonStyle(.bordered)
-                    .opacity(source.connected ? 1 : 0.5)
+                    .buttonStyle(TileStyle())
+                    .opacity(source.connected ? 1 : 0.4)
                 }
             }
         }
@@ -308,21 +417,36 @@ struct InputsGrid: View {
 struct SettingsGroup: View {
     @EnvironmentObject var store: TVStore
     let title: String
-    let systemImage: String
     let settings: [TVSetting]
     let picture: Bool
+    @State private var expanded = false
 
     var body: some View {
         if !settings.isEmpty {
-            DisclosureGroup {
-                VStack(spacing: 6) {
-                    ForEach(settings) { setting in
-                        SettingRow(setting: setting) { store.apply(setting, value: $0, picture: picture) }
+            VStack(alignment: .leading, spacing: 10) {
+                // No animated expand: the menu panel resizes to fit, and an animated height made it
+                // resize on every frame. The section snaps open; only the chevron turns.
+                Button { expanded.toggle() } label: {
+                    HStack {
+                        SectionLabel(text: title)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Theme.dim)
+                            .rotationEffect(.degrees(expanded ? 0 : -90))
+                            .animation(.easeOut(duration: 0.15), value: expanded)
+                    }
+                    .frame(minHeight: 24)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if expanded {
+                    VStack(spacing: 8) {
+                        ForEach(settings) { setting in
+                            SettingRow(setting: setting) { store.apply(setting, value: $0, picture: picture) }
+                        }
                     }
                 }
-                .padding(.top, 4)
-            } label: {
-                Label(title, systemImage: systemImage)
             }
         }
     }
@@ -334,25 +458,94 @@ struct SettingRow: View {
     @State private var value: Double = 0
 
     var body: some View {
-        HStack {
-            Text(setting.title).font(.callout).lineLimit(1)
-            Spacer()
-            if let range = setting.range {
-                Slider(value: $value, in: range, step: setting.step) { editing in
-                    if !editing { onChange(String(Int(value))) }
+        // No pop-up menus here: they can close or misplace the menu bar panel. Choices are inline segments
+        // (up to four) or a ‹ value › stepper that cycles through longer lists.
+        if setting.range == nil, setting.choices.count > 2, setting.choices.count <= 4 {
+            VStack(alignment: .leading, spacing: 6) {
+                title
+                Segments(choices: setting.choices, current: setting.current, onChange: onChange)
+            }
+        } else {
+            HStack {
+                title
+                Spacer()
+                if let range = setting.range {
+                    Slider(value: $value, in: range, step: setting.step) { editing in
+                        if !editing { onChange(String(Int(value))) }
+                    }
+                    .controlSize(.small)
+                    .frame(width: 110)
+                    Text("\(Int(value))").font(.system(size: 12)).monospacedDigit().foregroundStyle(Theme.dim).frame(width: 26, alignment: .trailing)
+                } else if setting.choices.count <= 2 {
+                    Segments(choices: setting.choices, current: setting.current, onChange: onChange).frame(width: 150)
+                } else {
+                    Cycler(choices: setting.choices, current: setting.current, onChange: onChange).frame(width: 150)
                 }
-                .frame(width: 120)
-                Text("\(Int(value))").monospacedDigit().foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
-            } else {
-                Picker("", selection: Binding(get: { setting.current }, set: onChange)) {
-                    ForEach(setting.choices, id: \.self) { Text($0).tag($0) }
+            }
+            .onAppear { value = Double(setting.current) ?? 0 }
+            .onChange(of: setting.current) { _, new in value = Double(new) ?? value }
+        }
+    }
+
+    private var title: some View {
+        Text(setting.title).font(.system(size: 12)).lineLimit(1)
+    }
+}
+
+/// A row of tiles, one per choice, with the current one in the accent colour.
+private struct Segments: View {
+    let choices: [String]
+    let current: String
+    let onChange: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(choices, id: \.self) { choice in
+                Button { if choice != current { onChange(choice) } } label: {
+                    Text(TVSetting.label(for: choice))
+                        .font(.system(size: 11))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, minHeight: 26)
                 }
-                .labelsHidden()
-                .frame(width: 150)
+                .buttonStyle(TileStyle(prominent: choice == current))
+                .focusable(false)
             }
         }
-        .onAppear { value = Double(setting.current) ?? 0 }
-        .onChange(of: setting.current) { _, new in value = Double(new) ?? value }
+    }
+}
+
+/// ‹ value › for lists too long for segments (picture mode has seven).
+private struct Cycler: View {
+    let choices: [String]
+    let current: String
+    let onChange: (String) -> Void
+
+    private var index: Int { choices.firstIndex(of: current) ?? 0 }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            arrow("chevron.left", by: -1)
+            Text(TVSetting.label(for: current))
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 26)
+                .background(Theme.tile)
+            arrow("chevron.right", by: 1)
+        }
+    }
+
+    private func arrow(_ symbol: String, by step: Int) -> some View {
+        Button {
+            guard !choices.isEmpty else { return }
+            onChange(choices[(index + step + choices.count) % choices.count])
+        } label: {
+            Image(systemName: symbol).font(.system(size: 9, weight: .semibold)).frame(width: 26, height: 26)
+        }
+        .buttonStyle(TileStyle())
+        .focusable(false)
+        .help(symbol == "chevron.left" ? "Previous" : "Next")
     }
 }
 
@@ -364,16 +557,21 @@ struct TextSender: View {
 
     var body: some View {
         if store.supports("appControl", "setTextForm") {
-            HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "keyboard").font(.system(size: 11)).foregroundStyle(Theme.dim)
                 TextField("Type into the TV's text box", text: $text)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
                     .onSubmit(send)
-                Button("Send", action: send).disabled(text.isEmpty)
             }
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(Theme.tile)
         }
     }
 
     private func send() {
+        guard !text.isEmpty else { return }
         store.sendText(text)
         text = ""
     }
@@ -456,6 +654,29 @@ struct SettingsView: View {
             default: testResult = "Reachable (TV in standby)"
             }
         }
+    }
+}
+
+// MARK: - Debug window
+
+/// `BlacklevelRemote --window` shows the menu in an ordinary window (a regular app, so UI tools can click it).
+/// The window follows the view's preferred size the way the menu bar panel does.
+@MainActor
+enum DebugWindow {
+    private static var window: NSWindow?
+
+    static func open() {
+        NSApp.setActivationPolicy(.regular)
+        let store = TVStore()
+        let controller = NSHostingController(rootView: MenuView().environmentObject(store))
+        controller.sizingOptions = [.preferredContentSize]
+        let window = NSWindow(contentViewController: controller)
+        window.title = "Blacklevel Remote (debug)"
+        window.styleMask = [.titled, .closable]
+        window.setFrameTopLeftPoint(NSPoint(x: 200, y: (NSScreen.main?.visibleFrame.maxY ?? 900) - 20))
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.window = window
     }
 }
 

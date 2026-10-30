@@ -1,21 +1,21 @@
 import AppKit
 import Foundation
 
-struct Source: Identifiable, Hashable {
+struct Source: Identifiable, Hashable, Codable {
     let uri: String
     let title: String
     let connected: Bool
     var id: String { uri }
 }
 
-struct TVApp: Identifiable, Hashable {
+struct TVApp: Identifiable, Hashable, Codable {
     let uri: String
     let title: String
     var id: String { uri }
 }
 
 /// One picture or speaker setting as the TV describes it: either a list of choices or a numeric range.
-struct TVSetting: Identifiable, Hashable {
+struct TVSetting: Identifiable, Hashable, Codable {
     let target: String
     var current: String
     let choices: [String]
@@ -24,9 +24,33 @@ struct TVSetting: Identifiable, Hashable {
     var id: String { target }
 
     var title: String {
-        // "colorTemperature" -> "Color Temperature"
-        target.replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression).capitalized
+        if let known = Self.titles[target] { return known }
+        // "colorTemperature" -> "Color temperature"
+        let words = target.replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression).lowercased()
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
+
+    /// Display text for one of the TV's raw values: "sRgb/bt709" -> "sRGB/BT.709", "expert1" -> "Expert 1".
+    static func label(for value: String) -> String {
+        if let known = valueLabels[value] { return known }
+        let spaced = value
+            .replacingOccurrences(of: "([a-z])([A-Z0-9])", with: "$1 $2", options: .regularExpression)
+            .lowercased()
+        return spaced.prefix(1).uppercased() + spaced.dropFirst()
+    }
+
+    /// Sony's own names, where splitting the camel-case target gets it wrong.
+    private static let titles = [
+        "hdrMode": "HDR mode",
+        "xtendedDynamicRange": "X-tended Dynamic Range",
+        "tvPosition": "TV position",
+        "subwooferFreq": "Subwoofer frequency",
+    ]
+
+    private static let valueLabels = [
+        "sRgb/bt709": "sRGB/BT.709", "dci": "DCI", "adobeRgb": "Adobe RGB", "bt2020": "BT.2020",
+        "hdr10": "HDR10", "hlg": "HLG", "auto24p": "Auto 24p", "tableTop": "Table top", "wallMount": "Wall mount",
+    ]
 
     init?(_ dict: [String: Any]) {
         guard let target = dict["target"] as? String, dict["isAvailable"] as? Bool ?? true else { return nil }
@@ -84,8 +108,14 @@ final class TVStore: ObservableObject {
     @Published var message: String?
     @Published var screenshot: NSImage?
 
+    /// False until the first power check answers (or fails), so cached data isn't shown as "On" or "Not connected".
+    @Published var liveChecked = false
+
     let client: BraviaClient
     private var poller: Timer?
+    /// The one-time data (model, methods, codes, apps) came from disk and hasn't been re-read from the TV yet.
+    private var needsRevalidation = false
+    private var savedCache: TVCache?
 
     init() {
         let defaults = UserDefaults.standard
@@ -97,7 +127,11 @@ final class TVStore: ObservableObject {
         mac = defaults.string(forKey: "mac") ?? ""
         useADBFallback = defaults.object(forKey: "adb") as? Bool ?? true
         client = BraviaClient(host: defaults.string(forKey: "host") ?? "", psk: Keychain.readPSK())
+        restoreCache()
     }
+
+    /// True when there's something to show before the TV answers: a cached menu from the last session.
+    var hasCachedState: Bool { !sources.isEmpty || !pictureSettings.isEmpty }
 
     var isOn: Bool { power == "active" }
     var hasPSK: Bool { !(client.psk ?? "").isEmpty }
@@ -128,6 +162,8 @@ final class TVStore: ObservableObject {
     func stopPolling() {
         poller?.invalidate()
         poller = nil
+        retryTask?.cancel()
+        retries = 0
     }
 
     // MARK: Loading
@@ -141,18 +177,101 @@ final class TVStore: ObservableObject {
 
         // First run: no address yet, so use the first TV that answers an SSDP search.
         if host.isEmpty, let found = await Discovery.findTVs().first { host = found }
-        if model == "BRAVIA" { await loadModel() }
+        let revalidate = needsRevalidation
+        if model == "BRAVIA" || revalidate { await loadModel() }
         await refreshLive()
         guard power != nil else { return }
         if mac.isEmpty, authorized != true { detectMAC() }
 
-        async let methodsLoaded: () = methods.isEmpty ? loadMethodTypes() : ()
+        async let methodsLoaded: () = methods.isEmpty || revalidate ? loadMethodTypes() : ()
         async let authChecked: () = authorized == true ? () : checkAuthorization()
-        async let codesLoaded: () = remoteCodes.isEmpty ? loadRemoteCodes() : ()
-        async let sourcesLoaded: () = loadSources()
-        async let settingsLoaded: () = loadSettings()
-        _ = await (methodsLoaded, authChecked, codesLoaded, sourcesLoaded, settingsLoaded)
-        if authorized == true, apps.isEmpty { await loadApps() }
+        async let codesLoaded: () = remoteCodes.isEmpty || revalidate ? loadRemoteCodes() : ()
+        async let sourcesLoaded = loadSources()
+        async let settingsLoaded = loadSettings()
+        let (_, _, _, sourcesOK, settingsOK) = await (methodsLoaded, authChecked, codesLoaded, sourcesLoaded, settingsLoaded)
+        if authorized == true, apps.isEmpty || revalidate { await loadApps() }
+        if revalidate, authorized == true { needsRevalidation = false }
+        reportLoad(sources: sourcesOK, settings: settingsOK)
+        saveCache()
+    }
+
+    // MARK: Disk cache
+
+    /// Last-known TV layout, so the first open after launch shows the menu before the TV answers.
+    /// Live state (power, volume, mute, now playing) and the key check are never stored; the PSK stays in the Keychain.
+    private struct TVCache: Codable, Equatable {
+        var host: String
+        var model: String
+        var sources: [Source]
+        var apps: [TVApp]
+        var remoteCodes: [String: String]
+        var pictureSettings: [TVSetting]
+        var soundSettings: [TVSetting]
+        var methods: [String: [String: [String]]]
+    }
+
+    private static var cacheURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BlacklevelRemote/state.json")
+    }
+
+    private func restoreCache() {
+        guard !host.isEmpty, let data = try? Data(contentsOf: Self.cacheURL),
+              let cache = try? JSONDecoder().decode(TVCache.self, from: data), cache.host == host else { return }
+        model = cache.model
+        sources = cache.sources
+        apps = cache.apps
+        remoteCodes = cache.remoteCodes
+        pictureSettings = cache.pictureSettings
+        soundSettings = cache.soundSettings
+        methods = cache.methods
+        savedCache = cache
+        needsRevalidation = true
+    }
+
+    /// Writes only when something worth keeping changed since the last write.
+    private func saveCache() {
+        guard !host.isEmpty, model != "BRAVIA", hasCachedState else { return }
+        let cache = TVCache(host: host, model: model, sources: sources, apps: apps, remoteCodes: remoteCodes,
+                            pictureSettings: pictureSettings, soundSettings: soundSettings, methods: methods)
+        guard cache != savedCache, let data = try? JSONEncoder().encode(cache) else { return }
+        let url = Self.cacheURL
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if (try? data.write(to: url, options: .atomic)) != nil { savedCache = cache }
+    }
+
+    /// Set when the TV answered power checks but its input or settings reads failed or came back empty
+    /// (it does this while it's busy, e.g. just after waking or switching home screens). The menu shows it with a Retry button.
+    @Published var loadIssue: String?
+    private var retryTask: Task<Void, Never>?
+    private var retries = 0
+
+    private func reportLoad(sources: Bool, settings: Bool) {
+        var missing: [String] = []
+        if !sources { missing.append("inputs") }
+        if !settings { missing.append("picture and sound settings") }
+        guard !missing.isEmpty else {
+            set(\.loadIssue, nil)
+            retries = 0
+            return
+        }
+        set(\.loadIssue, "The TV didn't send its \(missing.joined(separator: " or ")).")
+        // Retry a few times on a backoff while the menu is open; after that, the Retry button.
+        guard poller != nil, retries < 4 else { return }
+        retries += 1
+        let delay = Double(retries) * 3
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            await self?.refresh()
+        }
+    }
+
+    func retryLoad() {
+        retries = 0
+        retryTask?.cancel()
+        Task { await refresh() }
     }
 
     private var refreshing = false
@@ -190,9 +309,11 @@ final class TVStore: ObservableObject {
         do {
             let status = try await client.call("system", "getPowerStatus").first as? [String: Any]
             set(\.power, status?["status"] as? String)
+            set(\.liveChecked, true)
             if message == "Can't reach the TV at \(host)" { set(\.message, nil) }
         } catch {
             set(\.power, nil)
+            set(\.liveChecked, true)
             set(\.message, error.localizedDescription)
             return
         }
@@ -240,20 +361,25 @@ final class TVStore: ObservableObject {
         set(\.methods, all)
     }
 
-    private func loadSources() async {
-        guard let rows = try? await client.call("avContent", "getCurrentExternalInputsStatus").first as? [[String: Any]] else { return }
+    /// Returns false when the read failed or the TV listed no inputs; the last good list is kept.
+    private func loadSources() async -> Bool {
+        guard let rows = try? await client.call("avContent", "getCurrentExternalInputsStatus").first as? [[String: Any]],
+              !rows.isEmpty else { return false }
         set(\.sources, rows.compactMap { row in
             guard let uri = row["uri"] as? String else { return nil }
             let label = (row["label"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            return Source(uri: uri, title: label ?? row["title"] as? String ?? uri,
+            return Source(uri: uri, title: (label ?? row["title"] as? String ?? uri).htmlDecoded,
                           connected: row["connection"] as? Bool ?? true)
         })
+        return true
     }
 
     private func loadApps() async {
         guard let rows = try? await client.call("appControl", "getApplicationList").first as? [[String: Any]] else { return }
+        var seen = Set<String>()
         set(\.apps, rows.compactMap { row in
-            guard let uri = row["uri"] as? String, let title = row["title"] as? String else { return nil }
+            guard let uri = row["uri"] as? String, let title = (row["title"] as? String)?.htmlDecoded,
+                  seen.insert(title).inserted else { return nil }  // the A80J lists "Timers & Clock" twice
             return TVApp(uri: uri, title: title)
         }.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending })
     }
@@ -268,11 +394,16 @@ final class TVStore: ObservableObject {
         set(\.remoteCodes, codes)
     }
 
-    private func loadSettings() async {
+    /// Returns false when either read failed or came back empty; the last good settings are kept.
+    @discardableResult
+    private func loadSettings() async -> Bool {
         async let picture = try? client.call("video", "getPictureQualitySettings", params: [["target": ""]])
         async let sound = try? client.call("audio", "getSpeakerSettings", params: [["target": ""]])
-        if let rows = await picture?.first as? [[String: Any]] { set(\.pictureSettings, rows.compactMap(TVSetting.init)) }
-        if let rows = await sound?.first as? [[String: Any]] { set(\.soundSettings, rows.compactMap(TVSetting.init)) }
+        let pictureRows = (await picture?.first as? [[String: Any]])?.compactMap(TVSetting.init) ?? []
+        let soundRows = (await sound?.first as? [[String: Any]])?.compactMap(TVSetting.init) ?? []
+        if !pictureRows.isEmpty { set(\.pictureSettings, pictureRows) }
+        if !soundRows.isEmpty { set(\.soundSettings, soundRows) }
+        return !pictureRows.isEmpty && !soundRows.isEmpty
     }
 
     // MARK: Actions
@@ -340,9 +471,15 @@ final class TVStore: ObservableObject {
     func apply(_ setting: TVSetting, value: String, picture: Bool) {
         let method = picture ? "setPictureQualitySettings" : "setSpeakerSettings"
         let service = picture ? "video" : "audio"
+        // Show the choice straight away; loadSettings below replaces it with what the TV reports.
+        let keyPath: ReferenceWritableKeyPath<TVStore, [TVSetting]> = picture ? \.pictureSettings : \.soundSettings
+        if let index = self[keyPath: keyPath].firstIndex(where: { $0.target == setting.target }) {
+            self[keyPath: keyPath][index].current = value
+        }
         perform {
             try await self.client.call(service, method, params: [["settings": [["target": setting.target, "value": value]]]])
             await self.loadSettings()
+            self.saveCache()
         }
     }
 

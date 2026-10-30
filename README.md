@@ -5,7 +5,7 @@
 Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a dark, typographic home screen with no ads or recommendation rows, and a native macOS menu bar remote. No accounts, no cloud, no third-party code. Everything talks to the TV over your local network.
 
 <p align="center">
-  <img src="docs/images/home-apps.png" alt="Blacklevel Home: the time, one row of apps, one row of HDMI inputs" width="720">
+  <img src="docs/images/social-hero.png" alt="Blacklevel Home on a TV, with the Blacklevel Remote open from the Mac menu bar" width="100%">
 </p>
 
 ## What's in the box
@@ -32,6 +32,42 @@ Both parts are independent. Use either, or both.
 Developed and tested on a **Sony XR-65A80J** (2021, Google TV). It should work on other BRAVIA TVs that expose the BRAVIA REST API ("IP control"), which covers most Sony Android TV and Google TV models from 2015 onward. The remote reads the TV's supported methods, inputs, apps and remote keys at runtime, so it only shows what your TV can do.
 
 If you try it on another model, please open an issue with what worked and what didn't.
+
+## Further intentions
+
+Ideas, not promises. The rule stays the same: local network only, no accounts, no cloud, no third-party code.
+
+- **Mobile remote**: an iPhone (and maybe Android) app with the same features as the menu bar remote, built on the same BRAVIA REST API and IRCC calls. A phone remote that does only what the TV needs, without the vendor app's sign-in and suggestions.
+- **Windows tray remote**: the menu bar remote for Windows, living in the system tray. Same feature set, same "reads what your TV supports at runtime" approach.
+- **Shared API layer**: as more clients appear, write down the BRAVIA calls each one depends on (methods, IRCC codes, quirks per model) so every client behaves the same way.
+- **Wider model testing**: confirm behaviour beyond the XR-65A80J and note the differences in [Compatibility](#compatibility).
+
+If one of these matters to you, open an issue and say so.
+
+## Working with coding agents
+
+This repo is small and dependency-free on purpose, which makes it easy to hand to a coding agent (Claude Code, Codex, Cursor and the like). Point the agent at this section, then at the README for the part it's changing.
+
+**Orientation**
+
+- `launcher/`: Blacklevel Home. Kotlin `HomeActivity.kt` hosts a WebView; the whole UI is `app/assets/index.html`. Built by `build.sh` with `kotlinc`, `d8` and `aapt2`; no Gradle. Design intent lives in `launcher/.impeccable.md`; read it before touching the UI.
+- `menubar/`: Blacklevel Remote. A Swift package: `BraviaClient.swift` (REST + IRCC), `TVStore.swift` (state), `Views.swift` (SwiftUI), `Support.swift` (keychain, helpers), `SelfTest.swift`. Built by `build.sh`; no Xcode project.
+- `docs/`: user-facing setup and troubleshooting. `docs/images/` holds the screenshots used in READMEs.
+- `screensaver/` is git-ignored (Sony's artwork, personal use only). Never commit it or copy from it into tracked files.
+
+**Ground rules**
+
+- No new dependencies, package managers, build systems or network services. Everything talks to the TV on the LAN.
+- Keep the launcher OLED-safe: dark backgrounds, no large static bright areas, keep the idle dimming and drift. D-pad navigation must keep working.
+- Don't hard-code a model's capabilities. Ask the TV (supported methods, inputs, apps, remote keys) and hide what it doesn't support.
+- Never commit secrets: the pre-shared key lives in the macOS keychain, `*.keystore` is ignored, and TV IPs belong in settings, not source.
+- Match the surrounding code's style and comment density. Small, focused changes.
+
+**Checking your work**
+
+- Remote: `cd menubar && ./build.sh`, then `build/BlacklevelRemote.app/Contents/MacOS/BlacklevelRemote --selftest` to run every API call against a real TV (non-disruptive), and `--snapshot menu.png` to render the menu to an image for visual review.
+- Home: `cd launcher && ./build.sh`, install with `adb`, and check it on the TV with a D-pad. `index.html` can also be opened in a desktop browser for layout work.
+- If a change alters what the user sees, update the matching screenshot in `docs/images/` and the README that describes it.
 
 ## Documentation
 

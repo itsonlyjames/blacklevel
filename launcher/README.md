@@ -33,27 +33,63 @@ adb install -r build/home.apk
 adb shell cmd package set-home-activity io.github.itsonlyjames.blacklevel/.HomeActivity
 ```
 
-On a Sony A80J (Google TV, Android 12) that isn't enough by itself. `set-home-activity` and the HOME role (`cmd role add-role-holder android.app.role.HOME io.github.itsonlyjames.blacklevel`) both report success, but the Home button still opens Google TV's launcher. With that launcher disabled, Home goes to Google's setup app (`com.google.android.tungsten.setupwraith/.RecoveryActivity`), which shows nothing. Making it stick therefore needs both disabled. This has not been tested end to end:
+On a Sony A80J (Google TV, Android 12) that isn't enough by itself. `set-home-activity` and the HOME role both report success, but the Home button still opens Google TV's launcher. With that launcher disabled, Home goes to Google's setup app (`com.google.android.tungsten.setupwraith/.RecoveryActivity`), which shows nothing. adb isn't allowed to disable that one activity (`Shell cannot change component state`), so the whole setup app has to be disabled:
 
 ```bash
+adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
 adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith/.RecoveryActivity
-adb shell cmd package set-home-activity io.github.itsonlyjames.blacklevel/.HomeActivity
+adb shell cmd package set-home-activity --user 0 io.github.itsonlyjames.blacklevel/.HomeActivity
+adb shell cmd role add-role-holder --user 0 android.app.role.HOME io.github.itsonlyjames.blacklevel
 ```
 
-Reinstalling or updating the APK clears the `set-home-activity` choice, so run it again after every install. Until then, open Blacklevel Home from the apps row, or with `adb shell am start -n io.github.itsonlyjames.blacklevel/.HomeActivity`.
+Verified on the A80J on 30 October 2026 with the earlier build (package `tv.hijacking.home`). Home opened Blacklevel Home from YouTube, Plex, Netflix, TV Settings and the SHIELD input. It still did after a minute and after a reboot (the TV boots to its last input, as normal; Home then opens Blacklevel Home). Back on the home screen stays put. Opening apps, inputs and Settings from it all worked. Screenshots: `design/tv/home-from-*.png`, `design/tv/home-after-reboot.png`.
+
+### Current state of the TV
+
+| Package | State |
+|---|---|
+| `com.google.android.apps.tv.launcherx` (Google TV home) | disabled |
+| `com.google.android.tungsten.setupwraith` (Google TV setup and recovery) | disabled |
+| `tv.samba.ssm` (Samba TV) | disabled (separately, for privacy) |
+| `com.sony.dtv.homekit`, `com.sonypicturescore`, `com.apple.atve.sony.appletv`, `com.sony.dtv.kenhchonloc`, `com.sony.dtv.b2b.softap` | disabled from the factory; leave them |
+| `tv.hijacking.home` (Blacklevel Home, earlier package name) | installed; home screen and HOME role holder |
+
+### After every Blacklevel Home install or update
+
+Reinstalling can clear the home choice, so run this again after each install. With Google's launcher and setup app disabled, Blacklevel Home is also the only real home left, so Android should pick it anyway:
+
+```bash
+adb shell cmd package set-home-activity --user 0 io.github.itsonlyjames.blacklevel/.HomeActivity
+adb shell cmd role add-role-holder --user 0 android.app.role.HOME io.github.itsonlyjames.blacklevel
+```
+
+The source now builds `io.github.itsonlyjames.blacklevel`, but the TV still runs the earlier `tv.hijacking.home`. Those are two different apps to Android. When you first install the new build, run the two commands above, press Home to check it opens, then remove the old one with `adb uninstall tv.hijacking.home`.
+
+## Before a factory reset or a major Google TV update
+
+Switch Google's apps back on first. The setup app runs first-time setup and recovery, so a reset or big update may misbehave without it:
+
+```bash
+adb shell pm enable com.google.android.tungsten.setupwraith
+adb shell pm enable com.google.android.apps.tv.launcherx
+```
+
+Afterwards, disable them again with the install commands above if you still want Blacklevel Home.
 
 ## Revert to the stock home screen
 
-Verified on the A80J:
+The launcher lines were verified on the A80J: they restored Google TV after an earlier attempt that disabled only the launcher. Re-enabling the whole setup app hasn't been run yet, but it's the same `pm enable` that undoes `disable-user`.
 
 ```bash
+adb shell pm enable com.google.android.tungsten.setupwraith
 adb shell pm enable com.google.android.apps.tv.launcherx
-adb shell pm enable com.google.android.tungsten.setupwraith/.RecoveryActivity   # only if you disabled it
-adb shell cmd package set-home-activity com.google.android.apps.tv.launcherx/.home.HomeActivity
-adb shell cmd role add-role-holder android.app.role.HOME com.google.android.apps.tv.launcherx
-adb uninstall io.github.itsonlyjames.blacklevel
+adb shell cmd package set-home-activity --user 0 com.google.android.apps.tv.launcherx/.home.HomeActivity
+adb shell cmd role add-role-holder --user 0 android.app.role.HOME com.google.android.apps.tv.launcherx
+adb uninstall tv.hijacking.home                      # earlier package name, currently installed
+adb uninstall io.github.itsonlyjames.blacklevel      # if you've installed the renamed build
 ```
+
+Then press Home to check it opens Google TV.
 
 ## Customise
 

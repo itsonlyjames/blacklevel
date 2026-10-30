@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Home</title>
+<style>
+@font-face{font-family:Serif;src:url(fonts/InstrumentSerif-Regular.ttf)}
+@font-face{font-family:Sans;src:url(fonts/HankenGrotesk.ttf);font-weight:100 900}
+:root{
+  --bg:oklch(13% 0.008 60);
+  --ink:oklch(90% 0.025 80);
+  --dim:oklch(46% 0.018 70);
+  --faint:oklch(30% 0.012 65);
+  --accent:oklch(74% 0.13 58);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Sans;-webkit-font-smoothing:antialiased}
+#stage{position:absolute;inset:0;transition:opacity 2.4s var(--ease),transform 6s linear}
+body.idle #stage{opacity:.32}
+
+.clock{position:absolute;left:128px;top:96px}
+.time{font-family:Serif;font-size:184px;line-height:.9;letter-spacing:-.01em;font-variant-numeric:lining-nums}
+.date{margin-top:22px;margin-left:6px;font-size:30px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+
+.row-label{position:absolute;left:134px;font-size:24px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+
+/* apps: a dial, focused item anchored at the left edge */
+#apps{position:absolute;left:0;right:0;top:470px;height:220px;overflow:hidden}
+#track{position:absolute;left:128px;top:0;display:flex;align-items:baseline;gap:72px;white-space:nowrap;transition:transform .45s var(--ease)}
+.app{font-family:Serif;font-size:76px;line-height:1.6;color:var(--dim);transition:color .3s,opacity .45s var(--ease),transform .45s var(--ease);transform-origin:0 75%}
+.app.past{opacity:0}
+.app.sel{color:var(--ink);transform:scale(1.55)}
+
+/* focus marker: hairline under the selected thing */
+.mark{position:absolute;height:4px;background:var(--accent);border-radius:2px;transition:transform .45s var(--ease),width .45s var(--ease),opacity .3s;transform-origin:0 50%}
+
+#inputs{position:absolute;left:128px;right:128px;bottom:112px;display:flex;align-items:baseline;gap:64px}
+.inp{font-size:40px;font-weight:500;color:var(--dim);transition:color .3s}
+.inp small{font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:14px}
+.inp.sel{color:var(--ink)}
+.inp.settings{margin-left:auto}
+</style></head>
+<body>
+<div id="stage">
+  <div class="clock"><div class="time" id="time"></div><div class="date" id="date"></div></div>
+  <div class="row-label" style="top:430px">Apps</div>
+  <div id="apps"><div id="track"></div></div>
+  <div class="row-label" style="bottom:176px">Inputs</div>
+  <div id="inputs"></div>
+  <div class="mark" id="mark"></div>
+</div>
+<script>
+const B = window.Launcher || {
+  apps:()=>JSON.stringify(["Netflix","YouTube","Plex","Spotify","Kayo","Binge","ABC iview","SBS On Demand","9Now","10play","7plus","Optus Sport","Prime Video"].map(l=>({pkg:l,label:l}))),
+  inputs:()=>JSON.stringify([{id:"hdmi1",label:"SHIELD",sub:"HDMI 1"},{id:"hdmi2",label:"HDMI 2"},{id:"hdmi3",label:"HDMI 3"},{id:"hdmi4",label:"HDMI 4"}]),
+  launch:p=>console.log("launch",p), input:i=>console.log("input",i), settings:()=>console.log("settings")
+};
+
+// most recently opened first, remembered locally
+const mru = (()=>{try{return JSON.parse(localStorage.mru||"[]")}catch(e){return[]}})();
+const rank = p => { const i = mru.indexOf(p); return i < 0 ? 1e3 : i };
+let apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg));
+const inputs = JSON.parse(B.inputs()).concat([{id:"__settings",label:"Settings"}]);
+
+const track = document.getElementById('track'), inRow = document.getElementById('inputs'), mark = document.getElementById('mark');
+let row = 0, ai = 0, ii = 0;
+
+function build(){
+  track.innerHTML = apps.map(a=>`<div class="app">${a.label}</div>`).join('');
+  inRow.innerHTML = inputs.map(x=>`<div class="inp${x.id==='__settings'?' settings':''}">${x.label}${x.sub?`<small>${x.sub}</small>`:''}</div>`).join('');
+}
+function render(){
+  const els = track.children;
+  [...els].forEach((e,i)=>{e.classList.toggle('sel',row===0&&i===ai);e.classList.toggle('past',i<ai)});
+  track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;
+  [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
+  // place the hairline under whatever is selected (after layout settles)
+  if(row===0){ const w = els[ai].offsetWidth*1.55; mark.style.width=w+'px'; mark.style.transform=`translate(128px,${470+170}px)`; }
+  else { const e = inRow.children[ii], r = e.getBoundingClientRect(); mark.style.width=r.width+'px'; mark.style.transform=`translate(${r.left}px,${r.bottom+14}px)`; }
+}
+function activate(){
+  if(row===0){ const p = apps[ai].pkg; const m = mru.filter(x=>x!==p); m.unshift(p); try{localStorage.mru=JSON.stringify(m)}catch(e){} B.launch(p); }
+  else { const x = inputs[ii]; x.id==='__settings' ? B.settings() : B.input(x.id); }
+}
+
+document.addEventListener('keydown',e=>{
+  wake();
+  switch(e.key){
+    case 'ArrowLeft': row===0 ? ai=Math.max(0,ai-1) : ii=Math.max(0,ii-1); break;
+    case 'ArrowRight': row===0 ? ai=Math.min(apps.length-1,ai+1) : ii=Math.min(inputs.length-1,ii+1); break;
+    case 'ArrowDown': row=1; break;
+    case 'ArrowUp': row=0; break;
+    case 'Enter': activate(); break;
+    default: return;
+  }
+  e.preventDefault(); render();
+});
+
+// clock
+function tick(){
+  const d = new Date();
+  document.getElementById('time').textContent = d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}).replace(/\s?[ap]m/i,'');
+  document.getElementById('date').textContent = d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
+}
+tick(); setInterval(tick, 5000);
+
+// OLED care: dim after a minute idle, and drift the whole stage a few px every minute
+let idleT; const stage = document.getElementById('stage');
+function wake(){ document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(()=>document.body.classList.add('idle'), 60000); }
+setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*16-8)}px,${Math.round(Math.random()*16-8)}px)`; }, 60000);
+
+// called by the app when it returns to the foreground
+window.refresh = () => { apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg)); build(); ai=0; row=0; render(); wake(); };
+document.fonts.ready.then(()=>{ build(); render(); wake(); });
+</script>
+</body></html>

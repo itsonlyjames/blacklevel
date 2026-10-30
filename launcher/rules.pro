@@ -1,0 +1,5 @@
+-keep class io.github.itsonlyjames.blacklevel.** { *; }
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
+-keepattributes *Annotation*
+-dontwarn **
+-dontobfuscate

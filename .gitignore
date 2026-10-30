@@ -1,0 +1,15 @@
+.DS_Store
+
+# Build output
+launcher/build/
+menubar/build/
+menubar/.build/
+
+# Signing key: generated locally by launcher/build.sh, never publish
+*.keystore
+
+# Sony's Living Decor artwork (© Sony Corporation, personal use only); not ours to redistribute
+screensaver/
+
+# On-TV test captures
+launcher/design/tv/

@@ -37,6 +37,13 @@ If you try it on another model, please open an issue with what worked and what d
 
 Ideas, not promises. The rule stays the same: local network only, no accounts, no cloud, no third-party code.
 
+Next up:
+
+- **Signed and notarised remote**: sign Blacklevel Remote with a Developer ID and notarise it, so macOS opens it without the right-click workaround.
+- **Re-order apps on the home screen**: choose the order of the apps row on Blacklevel Home, instead of it following recent use.
+
+Later:
+
 - **Mobile remote**: an iPhone (and maybe Android) app with the same features as the menu bar remote, built on the same BRAVIA REST API and IRCC calls. A phone remote that does only what the TV needs, without the vendor app's sign-in and suggestions.
 - **Windows tray remote**: the menu bar remote for Windows, living in the system tray. Same feature set, same "reads what your TV supports at runtime" approach.
 - **Shared API layer**: as more clients appear, write down the BRAVIA calls each one depends on (methods, IRCC codes, quirks per model) so every client behaves the same way.

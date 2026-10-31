@@ -2,7 +2,7 @@
 
 **Take your Sony TV back. It's just a TV.**
 
-Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a dark, typographic home screen with no ads or recommendation rows, and a native macOS menu bar remote. No accounts, no cloud, no third-party code. Everything talks to the TV over your local network.
+Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a dark, typographic home screen with no ads or recommendation rows, and a native macOS menu bar remote. No accounts, no cloud, no third-party code. Everything talks to the TV over your local network; the only request that leaves it is a once-a-day check of this repo's Releases for updates, which you can turn off.
 
 <p align="center">
   <img src="docs/images/social-hero.png" alt="Blacklevel Home on a TV, with the Blacklevel Remote open from the Mac menu bar" width="100%">
@@ -12,7 +12,7 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
 
 | | Runs on | What it is |
 |---|---|---|
-| **[Blacklevel Home](launcher/)** | The TV (Android TV / Google TV) | A replacement home screen. The time, one row of your apps, one row of your HDMI inputs, and Settings. Nothing else. Built for OLED: dark, dims when idle, drifts to avoid burn-in. ~128 KB. |
+| **[Blacklevel Home](launcher/)** | The TV (Android TV / Google TV) | A replacement home screen. The time, one row of your apps, one row of your HDMI inputs, and Settings. Nothing else. Built for OLED: dark, dims when idle, drifts to avoid burn-in. ~150 KB. |
 | **[Blacklevel Remote](menubar/)** | macOS 14+ | A SwiftUI menu bar remote: power, volume, inputs, apps, D-pad, playback, picture and sound settings, text entry, screenshots. Uses Sony's BRAVIA REST API and IRCC codes. |
 
 <p align="center">
@@ -56,7 +56,7 @@ This repo is small and dependency-free on purpose, which makes it easy to hand t
 
 **Ground rules**
 
-- No new dependencies, package managers, build systems or network services. Everything talks to the TV on the LAN.
+- No new dependencies, package managers, build systems or network services. Everything talks to the TV on the LAN. The one exception is the update check against GitHub Releases (`Updater.swift`, and `checkUpdate`/`installUpdate` in `HomeActivity.kt`); keep it the only one, and keep it switchable.
 - Keep the launcher OLED-safe: dark backgrounds, no large static bright areas, keep the idle dimming and drift. D-pad navigation must keep working.
 - Don't hard-code a model's capabilities. Ask the TV (supported methods, inputs, apps, remote keys) and hide what it doesn't support.
 - Never commit secrets: the pre-shared key lives in the macOS keychain, `*.keystore` is ignored, and TV IPs belong in settings, not source.

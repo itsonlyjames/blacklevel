@@ -20,6 +20,11 @@ struct BlacklevelRemoteApp: App {
         if CommandLine.arguments.contains("--window") {
             Task { @MainActor in DebugWindow.open() }
         }
+        // `BlacklevelRemote --update` checks GitHub and installs a newer release if there is one (for testing the updater).
+        if CommandLine.arguments.contains("--update") {
+            Task { @MainActor in await Updater.shared.installLatest() }
+        }
+        _ = Updater.shared // starts the launch and daily update checks
     }
 
     var body: some Scene {
@@ -92,6 +97,7 @@ private struct Rule: View {
 
 struct MenuView: View {
     @EnvironmentObject var store: TVStore
+    @ObservedObject private var updater = Updater.shared
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -132,6 +138,7 @@ struct MenuView: View {
             }
 
             Rule()
+            if let release = updater.release { update(release) }
             footer
         }
         .padding(16)
@@ -204,6 +211,23 @@ struct MenuView: View {
         case nil where !store.liveChecked && !store.host.isEmpty: return "Connecting…"
         case nil: return store.host.isEmpty ? "Looking for a TV…" : "Not connected · \(store.host)"
         default: return store.power ?? ""
+        }
+    }
+
+    private func update(_ release: Updater.Release) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Version \(release.version) is available").font(.caption)
+                if let status = updater.status {
+                    Text(status).font(.caption).foregroundStyle(Theme.accent).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 4)
+            Button(action: updater.install) {
+                Text(updater.installing ? "Updating…" : "Update").frame(width: 72, height: 24)
+            }
+            .buttonStyle(TileStyle(prominent: true))
+            .disabled(updater.installing)
         }
     }
 
@@ -760,6 +784,7 @@ struct TextSender: View {
 
 struct SettingsView: View {
     @EnvironmentObject var store: TVStore
+    @ObservedObject private var updater = Updater.shared
     @State private var psk = Keychain.readPSK() ?? ""
     @State private var discovered: [String] = []
     @State private var searching = false
@@ -804,6 +829,26 @@ struct SettingsView: View {
                 if !store.adbAvailable {
                     Text("adb isn't installed.").font(.caption).foregroundStyle(.secondary)
                 }
+            }
+
+            Section {
+                Toggle("Check for updates daily", isOn: $updater.checkAutomatically)
+                HStack {
+                    if let release = updater.release {
+                        Button(updater.installing ? "Updating…" : "Update to \(release.version)", action: updater.install)
+                            .disabled(updater.installing)
+                    } else {
+                        Button(updater.checking ? "Checking…" : "Check Now") { Task { await updater.check() } }
+                            .disabled(updater.checking)
+                    }
+                    if let status = updater.status { Text(status).foregroundStyle(.secondary) }
+                }
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text("Version \(updater.current). Asks GitHub for the latest release, the only request that leaves your network.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

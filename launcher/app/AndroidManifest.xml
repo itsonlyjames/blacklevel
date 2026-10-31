@@ -8,6 +8,8 @@
 
     <!-- device names for HDMI-CEC inputs come from the TV's own API on 127.0.0.1 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- updates itself from GitHub Releases (Customise → Updates); the TV asks once before allowing it -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

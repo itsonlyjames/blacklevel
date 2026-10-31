@@ -10,7 +10,7 @@ A replacement home screen for Sony BRAVIA Google TV / Android TV. The time, one 
 - **OLED care**: a dark, warm background; dims to ~30% after a minute idle; shifts everything a few pixels every minute.
 - **Remote**: ◀ ▶ move along a row, ▲ ▼ switch rows, OK opens, hold OK moves an app. Back closes Customise or cancels a move, and otherwise does nothing (you're already home).
 
-It's a single `WebView` page ([`app/assets/index.html`](app/assets/index.html)) with a small Kotlin bridge ([`HomeActivity.kt`](app/src/io/github/itsonlyjames/blacklevel/HomeActivity.kt)) that lists apps and inputs. The APK is about 136 KB. Fonts are bundled, so it works offline.
+It's a single `WebView` page ([`app/assets/index.html`](app/assets/index.html)) with a small Kotlin bridge ([`HomeActivity.kt`](app/src/io/github/itsonlyjames/blacklevel/HomeActivity.kt)) that lists apps and inputs. The APK is about 150 KB. Fonts are bundled, so it works offline.
 
 ## Build
 
@@ -21,7 +21,7 @@ brew install openjdk@17 kotlin
 ./build.sh
 ```
 
-The script runs aapt2 → kotlinc → R8 → zipalign → apksigner directly, no Gradle. Output: `build/home.apk`. The first build creates a local `debug.keystore` to sign with; keep it, since reinstalling over an APK signed with a different key fails.
+The script runs aapt2 → kotlinc → R8 → zipalign → apksigner directly, no Gradle. Output: `build/home.apk`. The first build creates a local `debug.keystore` to sign with; keep it, since reinstalling over an APK signed with a different key fails. The keystore that signs the published releases is the only key in-app updates will accept, so back it up somewhere other than this Mac: lose it and every TV has to uninstall Blacklevel Home to move to a new key.
 
 ## Install
 
@@ -31,6 +31,7 @@ Set up network debugging first ([TV setup](../docs/tv-setup.md#3-network-debuggi
 adb connect <tv-ip>:5555
 adb install -r build/home.apk
 adb shell cmd package set-home-activity io.github.itsonlyjames.blacklevel/.HomeActivity
+adb shell appops set --user 0 io.github.itsonlyjames.blacklevel REQUEST_INSTALL_PACKAGES allow   # lets it update itself
 ```
 
 On a Sony A80J (Google TV, Android 12) that isn't enough by itself. `set-home-activity` and the HOME role both report success, but the Home button still opens Google TV's launcher. With that launcher disabled, Home goes to Google's setup app (`com.google.android.tungsten.setupwraith/.RecoveryActivity`), which shows nothing. adb isn't allowed to disable that one activity (`Shell cannot change component state`), so the whole setup app has to be disabled:
@@ -65,6 +66,14 @@ adb shell cmd role add-role-holder --user 0 android.app.role.HOME io.github.itso
 ```
 
 Builds before 31 October 2026 used the package `tv.hijacking.home`, which Android treats as a different app. If you have it, install the new build, run the two commands above, press Home to check it opens, then remove the old one with `adb uninstall tv.hijacking.home`. The new build starts with an empty recent-apps order.
+
+## Updates
+
+Once a day Blacklevel Home asks GitHub for the latest release. When there's a newer one, **Customise** on the home screen says *Update available*. Open it, go to the **Update** row at the bottom and press OK: it downloads the APK, checks it against `SHA256SUMS.txt` and hands it to Android, which asks you to confirm. Press ◀ then OK on **Update** (the dialog starts on Cancel). Turn the daily check off with **Updates** in Customise; on the **Version** row, OK checks now. This is the only request Blacklevel Home makes outside your network.
+
+Android only lets an app install updates once you've allowed it, which is what the `appops` line in [Install](#install) does. Without it, pressing OK opens the TV's **Install unknown apps** list. On the A80J that list doesn't help: `adb install` puts the app in both of the TV's users (0 and Sony's second profile, 10), and the toggle there allows the user-10 copy, not the one you see. Run the `appops` line instead.
+
+Only builds signed with the release key can update this way, so a copy you built yourself says to update with adb. Verified on the A80J on 31 October 2026 (1.0.9 test build → 1.1.0): the confirmation appeared, the update installed, and Home still opened Blacklevel Home with the HOME role kept. After an app has installed itself once, Android 12 may skip the confirmation for later updates; that part hasn't been seen yet.
 
 ## Before a factory reset or a major Google TV update
 

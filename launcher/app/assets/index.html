@@ -67,8 +67,8 @@ body.vertical .inp.settings{margin-left:0;margin-top:28px}
 #panel{position:absolute;inset:0;z-index:1;padding:96px 128px;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .35s var(--ease),visibility 0s .35s}
 body.panel #panel{opacity:1;visibility:visible;transition:opacity .35s var(--ease)}
 body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
-#panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:56px}
-.opt{display:flex;align-items:baseline;font-size:40px;font-weight:500;color:var(--dim);margin-bottom:28px;transition:color .3s}
+#panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:48px}
+.opt{display:flex;align-items:baseline;font-size:40px;font-weight:500;color:var(--dim);margin-bottom:18px;transition:color .3s}
 .opt .lbl{width:560px}
 .opt .val{display:inline-block}
 .opt .arr{color:var(--faint);opacity:0;transition:opacity .2s}
@@ -76,7 +76,10 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 .opt .arr.r{margin-left:28px}
 .opt.sel{color:var(--ink)}
 .opt.sel .arr{opacity:1}
-#panel .hint{position:absolute;left:128px;bottom:150px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.opt.version{margin-top:28px}
+.opt.version .arr{visibility:hidden}
+.opt .msg{margin-left:28px;font-size:28px;color:var(--faint)}
+#panel .hint{position:absolute;left:128px;bottom:96px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
 </style></head>
 <body>
 <div id="stage">
@@ -101,6 +104,7 @@ const OPTS = [
   {key:"size", label:"App name size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
   {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
   {key:"dim", label:"Dim when idle", choices:[[1,"After 1 minute"],[5,"After 5 minutes"],[15,"After 15 minutes"]]},
+  {key:"updates", label:"Updates", choices:[["daily","Check daily"],["off","Off"]]},
 ];
 const load = (k, d) => { try{return JSON.parse(localStorage[k]) ?? d}catch(e){return d} };
 const save = (k, v) => { try{localStorage[k]=JSON.stringify(v)}catch(e){} };
@@ -122,8 +126,30 @@ function arrange(list){
   return list.slice().sort((a,b)=>rank(a.pkg)-rank(b.pkg));
 }
 let apps = arrange(JSON.parse(B.apps()));
-const extras = [{id:"__customise",label:"Customise"},{id:"__settings",label:"Settings"}];
-let inputs = JSON.parse(B.inputs()).concat(extras);
+const extras = () => [{id:"__customise",label:"Customise",sub:latest?"Update available":null},{id:"__settings",label:"Settings"}];
+
+// updates: once a day the app asks GitHub for a newer Blacklevel Home; Customise shows it and installs it
+const current = B.version ? B.version() : '';
+let latest = load('latest', null), updateMsg = '';
+if(latest===current) latest = null;
+function checkUpdate(force){
+  if(!B.checkUpdate || (!force && (pref('updates')==='off' || Date.now()-load('checked',0) < 864e5))) return;
+  save('checked', Date.now()); B.checkUpdate();
+}
+// called by the app: {latest} after a check (null when up to date), {message} while checking or installing
+window.updateStatus = s => {
+  if('latest' in s){ latest = s.latest; save('latest', latest); updateMsg = latest ? '' : 'Up to date'; }
+  if(s.message) updateMsg = s.message;
+  refreshInputs(); if(open) renderPanel();
+};
+function updateAction(){
+  if(latest){ updateMsg = 'Starting…'; B.installUpdate(); }
+  else { updateMsg = 'Checking…'; checkUpdate(true); }
+  renderPanel();
+}
+setInterval(checkUpdate, 36e5);
+
+let inputs = JSON.parse(B.inputs()).concat(extras());
 
 const track = document.getElementById('track'), inRow = document.getElementById('inputs');
 const appsEl = document.getElementById('apps');
@@ -173,11 +199,15 @@ function moveKey(k){
 }
 
 const optsEl = document.getElementById('opts');
+// the options, then one row for the version: OK checks now, or installs the update it found
+const rows = () => OPTS.length + (current ? 1 : 0);
 function renderPanel(){
-  optsEl.innerHTML = OPTS.map((o,i)=>`<div class="opt${i===pi?' sel':''}"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`).join('');
+  optsEl.innerHTML = OPTS.map((o,i)=>`<div class="opt${i===pi?' sel':''}"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`).join('')
+    + (current ? `<div class="opt version${pi===OPTS.length?' sel':''}"><span class="lbl">${latest?'Update':'Version'}</span><span class="arr l">‹</span><span class="val">${latest?`Install ${latest}`:current}</span><span class="msg">${updateMsg || (latest ? `You have ${current}` : 'OK to check now')}</span></div>` : '');
 }
 function showPanel(on){ open = on; pi = 0; document.body.classList.toggle('panel', on); if(on) renderPanel(); }
 function cycle(d){
+  if(pi===OPTS.length){ if(d>0) updateAction(); return; }
   const o = OPTS[pi], i = o.choices.findIndex(c=>c[0]===pref(o.key));
   prefs[o.key] = o.choices[(i+d+o.choices.length)%o.choices.length][0];
   save('prefs', prefs);
@@ -186,7 +216,7 @@ function cycle(d){
 function panelKey(k){
   switch(k){
     case 'ArrowUp': pi=Math.max(0,pi-1); break;
-    case 'ArrowDown': pi=Math.min(OPTS.length-1,pi+1); break;
+    case 'ArrowDown': pi=Math.min(rows()-1,pi+1); break;
     case 'ArrowLeft': cycle(-1); return true;
     case 'ArrowRight': case 'Enter': cycle(1); return true;
     case 'Escape': showPanel(false); return true;
@@ -239,14 +269,15 @@ function wake(){ document.body.classList.remove('idle'); clearTimeout(idleT); id
 setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*16-8)}px,${Math.round(Math.random()*16-8)}px)`; }, 60000);
 
 // called by the app when HDMI device names arrive (they load in the background)
-window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras); ii = Math.min(ii, inputs.length-1); build(); render(); };
+window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras()); ii = Math.min(ii, inputs.length-1); build(); render(); };
 
 // called by the app when it returns to the foreground
 window.refresh = () => {
   clearTimeout(hold); hold = null; moving = null; document.body.classList.remove('moving');
   apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake();
+  checkUpdate();
 };
 applyPrefs();
-document.fonts.ready.then(()=>{ build(); render(); wake(); });
+document.fonts.ready.then(()=>{ build(); render(); wake(); checkUpdate(); });
 </script>
 </body></html>

@@ -29,6 +29,12 @@ To start it at login, add the app under **System Settings → General → Login 
 
 The key is stored in your login keychain. The TV's address and MAC address are kept in the app's preferences.
 
+## Updates
+
+Once a day the remote asks GitHub for the latest release. When there's a newer one, the menu shows **Version x.y.z is available** with an **Update** button. It downloads the release, checks it against `SHA256SUMS.txt` and checks it's signed by the same Developer ID, then swaps it in and reopens. Turn the check off, or check now, under **Settings… → Updates**. This is the only request the remote makes outside your network.
+
+Keep the app in Applications: macOS runs apps opened straight from Downloads from a temporary copy, which can't replace itself. A build you made yourself isn't signed with the release's Developer ID, so **Update** opens the release page instead.
+
 ## What it does
 
 | Feature | API | Needs key |
@@ -58,7 +64,10 @@ The remote reads the method list, inputs, apps, picture settings and remote keys
 ```bash
 build/BlacklevelRemote.app/Contents/MacOS/BlacklevelRemote --selftest           # run every API call against the TV, print results
 build/BlacklevelRemote.app/Contents/MacOS/BlacklevelRemote --snapshot menu.png  # render the live menu to a PNG and quit
+build/BlacklevelRemote.app/Contents/MacOS/BlacklevelRemote --update             # install a newer release over this copy, if there is one
 ```
+
+To try the updater, copy the app somewhere, set its `CFBundleShortVersionString` below the latest release, sign it again with your Developer ID and run it with `--update`.
 
 ## Source
 
@@ -68,4 +77,5 @@ build/BlacklevelRemote.app/Contents/MacOS/BlacklevelRemote --snapshot menu.png  
 | `TVStore.swift` | State, polling and every TV action |
 | `Views.swift` | The menu and Settings window |
 | `Support.swift` | Keychain, SSDP discovery, MAC lookup, ADB fallback |
+| `Updater.swift` | Checks GitHub Releases and installs a newer version |
 | `SelfTest.swift` | `--selftest` |

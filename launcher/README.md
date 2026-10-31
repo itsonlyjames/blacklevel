@@ -5,10 +5,11 @@ A replacement home screen for Sony BRAVIA Google TV / Android TV. The time, one 
 ![Apps row focused](../docs/images/home-apps.png)
 ![Inputs row focused](../docs/images/home-inputs.png)
 
-- **Apps** come from the TV itself (every app with a TV launcher entry), minus the bundled Sony and Google extras (Play Store, Sony Select, the Vewd browser and so on). YouTube stays. By default the app you opened last moves to the front; hold OK on an app to pick it up, ◀ ▶ to move it, OK to place it (Back cancels). Placing one switches **App order** in Customise to *Your order*; switch it back to *Recently opened* any time.
+- **Apps** come from the TV itself (every app with a TV launcher entry), minus the bundled Sony and Google extras (Play Store, Sony Select, the Vewd browser and so on). YouTube stays. By default the app you opened last moves to the front; hold OK on an app to pick it up, ◀ ▶ to move it, OK to place it (Back cancels). Placing one switches **Customise → Apps → Order** to *Your order*; switch it back to *Recently opened* any time.
+- **Names or icons**: **Customise → Apps → Show as** picks the row of app names or *Icons*, a close-set strip of each app's own icon with the focused app's name above it. **Customise → Icons** sets their **Shape** (square, rounded or circle; apps with an older-style icon keep their own) and whether the icons you're not on fade to grey (**Fade others**).
 - **Inputs** are the connected HDMI ports, named after the HDMI-CEC device on them ("SHIELD", "RX-V485") or the name you gave the port on the TV ("PC"). Device names come from the TV's own local Sony API, which needs no key. That API takes about a second to answer, so names are cached and the row updates when they change.
 - **OLED care**: a dark, warm background; dims to ~30% after a minute idle; shifts everything a few pixels every minute.
-- **Remote**: ◀ ▶ move along a row, ▲ ▼ switch rows, OK opens, hold OK moves an app. Back closes Customise or cancels a move, and otherwise does nothing (you're already home).
+- **Remote**: ◀ ▶ move along a row, ▲ ▼ switch rows, OK opens, hold OK moves an app. In Customise, ▲ ▼ pick a section and ▶ goes into its settings, where ◀ ▶ change them. Back steps back out of Customise or cancels a move, and otherwise does nothing (you're already home).
 
 It's a single `WebView` page ([`app/assets/index.html`](app/assets/index.html)) with a small Kotlin bridge ([`HomeActivity.kt`](app/src/io/github/itsonlyjames/blacklevel/HomeActivity.kt)) that lists apps and inputs. The APK is about 150 KB. Fonts are bundled, so it works offline.
 
@@ -69,7 +70,7 @@ Builds before 31 October 2026 used the package `tv.hijacking.home`, which Androi
 
 ## Updates
 
-Once a day Blacklevel Home asks GitHub for the latest release. When there's a newer one, **Customise** on the home screen says *Update available*. Open it, go to the **Update** row at the bottom and press OK: it downloads the APK, checks it against `SHA256SUMS.txt` and hands it to Android, which asks you to confirm. Press ◀ then OK on **Update** (the dialog starts on Cancel). Turn the daily check off with **Updates** in Customise; on the **Version** row, OK checks now. This is the only request Blacklevel Home makes outside your network.
+Once a day Blacklevel Home asks GitHub for the latest release. When there's a newer one, **Customise** on the home screen says *Update available*. Open it (it opens on its **Updates** section), go to the **Update** row and press OK: it downloads the APK, checks it against `SHA256SUMS.txt` and hands it to Android, which asks you to confirm. Press ◀ then OK on **Update** (the dialog starts on Cancel). Turn the daily check off with **Customise → Updates → Updates**; on the **Version** row, OK checks now. This is the only request Blacklevel Home makes outside your network.
 
 Android only lets an app install updates once you've allowed it, which is what the `appops` line in [Install](#install) does. Without it, pressing OK opens the TV's **Install unknown apps** list. On the A80J that list doesn't help: `adb install` puts the app in both of the TV's users (0 and Sony's second profile, 10), and the toggle there allows the user-10 copy, not the one you see. Run the `appops` line instead.
 

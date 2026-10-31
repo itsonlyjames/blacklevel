@@ -268,7 +268,7 @@ let idleT; const stage = document.getElementById('stage');
 function wake(){ document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(()=>document.body.classList.add('idle'), pref('dim')*60000); }
 setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*16-8)}px,${Math.round(Math.random()*16-8)}px)`; }, 60000);
 
-// called by the app when HDMI device names arrive (they load in the background)
+// called by the app when an HDMI input connects or drops, or device names arrive (they load in the background)
 window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras()); ii = Math.min(ii, inputs.length-1); build(); render(); };
 
 // called by the app when it returns to the foreground

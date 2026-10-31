@@ -14,6 +14,8 @@ import android.media.tv.TvInputManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.KeyEvent
 import android.webkit.JavascriptInterface
@@ -51,11 +53,26 @@ class HomeActivity : Activity() {
         setContentView(web)
         web.requestFocus()
         registerReceiver(installed, IntentFilter(INSTALLED))
+        getSystemService(TvInputManager::class.java)?.registerCallback(inputsChanged, handler)
     }
 
     override fun onDestroy() {
+        getSystemService(TvInputManager::class.java)?.unregisterCallback(inputsChanged)
+        handler.removeCallbacks(redrawInputs)
         unregisterReceiver(installed)
         super.onDestroy()
+    }
+
+    // Redraw the inputs row while Home is on screen as cables go in and out and CEC devices appear.
+    // A source that's negotiating can drop and return several times a second, so wait for it to settle.
+    private val handler = Handler(Looper.getMainLooper())
+    private val redrawInputs = Runnable { web.evaluateJavascript("window.refreshInputs && refreshInputs()", null) }
+    private val inputsChanged = object : TvInputManager.TvInputCallback() {
+        private fun changed() { handler.removeCallbacks(redrawInputs); handler.postDelayed(redrawInputs, 500) }
+        override fun onInputStateChanged(inputId: String, state: Int) = changed()
+        override fun onInputAdded(inputId: String) = changed()
+        override fun onInputRemoved(inputId: String) = changed()
+        override fun onInputUpdated(inputId: String) = changed()
     }
 
     private fun updateStatus(status: JSONObject) =

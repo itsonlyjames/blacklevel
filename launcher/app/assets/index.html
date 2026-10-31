@@ -16,8 +16,9 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Text;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
 ::-webkit-scrollbar{display:none}
-#stage{position:absolute;inset:0;transition:opacity 2.4s var(--ease),transform 6s linear}
-body.idle #stage{opacity:.32}
+/* dims gently over 4s, wakes in half a second on any key; the drift eases rather than lurching */
+#stage{position:absolute;inset:0;transition:opacity .5s var(--ease),transform 8s ease-in-out}
+body.idle #stage{opacity:.32;transition:opacity 4s ease-in-out,transform 8s ease-in-out}
 
 .clock{position:absolute;left:128px;top:96px}
 .time{font-family:Display;font-size:184px;line-height:.9;letter-spacing:-.01em;font-variant-numeric:lining-nums}
@@ -32,22 +33,22 @@ body.idle #stage{opacity:.32}
 .app.moving{color:var(--accent)}
 
 /* focus marker: an accent hairline grows under the selected thing */
-.app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .4s var(--ease),opacity .2s}
+.app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .25s var(--ease),opacity .15s}
 .app::after{margin-top:-14px}
 .inp::after{margin-top:12px}
 .opt .val::after{margin-top:10px}
-.app.sel::after,.inp.sel::after,.opt.sel .val::after{transform:scaleX(1);opacity:1}
+.app.sel::after,.inp.sel::after,.opt.sel .val::after{transform:scaleX(1);opacity:1;transition:transform .4s var(--ease),opacity .2s}
 
-#inputs{position:absolute;left:128px;right:128px;bottom:150px;display:flex;align-items:baseline;gap:64px;transition:opacity .3s var(--ease)}
+#inputs{position:absolute;left:128px;right:128px;bottom:150px;display:flex;align-items:baseline;gap:64px;transition:opacity .3s var(--ease) .15s}
 .inp{font-size:40px;font-weight:500;color:var(--dim);transition:color .3s}
 .inp small{font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:14px}
 .inp.sel{color:var(--ink)}
 .inp.settings{margin-left:auto}
 
 /* moving an app: the inputs make way for a hint in the same place */
-#movehint{position:absolute;left:128px;bottom:150px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);opacity:0;transition:opacity .3s var(--ease)}
-body.moving #inputs{opacity:0}
-body.moving #movehint{opacity:1}
+#movehint{position:absolute;left:128px;bottom:150px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);opacity:0;transition:opacity .15s var(--ease)}
+body.moving #inputs{opacity:0;transition:opacity .15s var(--ease)}
+body.moving #movehint{opacity:1;transition:opacity .3s var(--ease) .15s}
 
 /* vertical layout: clock and inputs down the left, apps in one column on the right.
    The column starts level with the clock and runs to the bottom of the screen, fading out; names keep the horizontal size. */
@@ -77,8 +78,10 @@ body.icons .app.sel img,body.icons .app.sel .ph,body.nofade .app img,body.nofade
 body.icons .app::after{margin-top:20px}
 body.icons .app.moving{transform:translateY(-16px)}
 body.icons #headline{display:block;position:absolute;left:128px;top:420px;width:1664px;height:180px;transition:opacity .3s var(--ease)}
-#headline span{position:absolute;left:0;bottom:0;font-family:Display;font-size:150px;line-height:1;white-space:nowrap;opacity:0;transform:translateY(16px);transition:opacity .35s var(--ease),transform .5s var(--ease),color .3s}
-#headline span.on{opacity:1;transform:none}
+#headline span{position:absolute;left:0;bottom:0;font-family:Display;font-size:150px;line-height:1;white-space:nowrap;opacity:0;transform:translateX(32px);transition:opacity .15s var(--ease),transform .5s var(--ease),color .3s}
+/* names wait to the right and leave to the left, so the headline moves with ◀ ▶ like the strip; the old one clears fast */
+#headline span.l{transform:translateX(-32px)}
+#headline span.on{opacity:1;transform:none;transition:opacity .35s var(--ease),transform .5s var(--ease),color .3s}
 body.away #headline{opacity:.4}
 body.moving #headline span{color:var(--accent)}
 /* vertical: one column of icons, the focused app's name set out to the right of its icon */
@@ -91,8 +94,12 @@ body.vertical.icons .app.sel .nm{opacity:1;transform:translate(0,-55%)}
 body.vertical.icons .app::after{margin-top:14px;width:112px}
 
 /* customise panel: covers the stage, same type, same focus hairline */
-#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;display:flex;flex-direction:column;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .35s var(--ease),visibility 0s .35s}
+#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;display:flex;flex-direction:column;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .25s var(--ease),visibility 0s .25s}
 body.panel #panel{opacity:1;visibility:visible;transition:opacity .35s var(--ease)}
+/* opening, the title then the sections rise into place; closing is a quicker fade */
+#panel h2,.sections{transform:translateY(16px);transition:transform .25s var(--ease)}
+body.panel #panel h2{transform:none;transition:transform .5s var(--ease)}
+body.panel .sections{transform:none;transition:transform .5s var(--ease) .05s}
 body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 #panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:64px}
 /* sections down the left, the open section's options on the right, split by a faint rule that runs from the title to the hints.
@@ -103,8 +110,8 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 .tab{font-size:40px;font-weight:500;color:var(--dim);margin-bottom:18px;transition:color .3s}
 .tab.cur{color:var(--ink)}
 .tab span{display:inline-block}
-.tab span::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .4s var(--ease),opacity .2s;margin-top:10px}
-.tab.sel span::after{transform:scaleX(1);opacity:1}
+.tab span::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .25s var(--ease),opacity .15s;margin-top:10px}
+.tab.sel span::after{transform:scaleX(1);opacity:1;transition:transform .4s var(--ease),opacity .2s}
 .opt{display:flex;align-items:baseline;font-size:40px;font-weight:500;color:var(--dim);margin-bottom:18px;transition:color .3s}
 .opt .lbl{width:480px}
 .opt .val{display:inline-block}
@@ -117,8 +124,16 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 .opt.version .arr{visibility:hidden}
 .opt .msg{margin-left:28px;font-size:28px;color:var(--faint)}
 #panel .hint{position:absolute;left:128px;bottom:96px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+/* [5] hidden until the fonts are in, then everything settles in at once */
+body.pre #stage{visibility:hidden}
+/* reduced motion: nothing slides, grows or lifts; fades, colour, the idle dim and the burn-in drift stay */
+@media (prefers-reduced-motion:reduce){
+  #track{transition:none}
+  .app::after,.inp::after,.opt .val::after,.tab span::after,#headline span,#panel h2,.sections,body.icons .app.moving{transform:none!important}
+  body.vertical.icons .app .nm{transform:translate(0,-55%)!important}
+}
 </style></head>
-<body>
+<body class="pre">
 <div id="stage">
   <div class="clock"><div class="time" id="time"></div><div class="date" id="date"></div></div>
   <div id="headline"></div>
@@ -128,6 +143,7 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 </div>
 <div id="panel"><h2>Customise</h2><div class="sections"><div id="tabs"></div><div id="opts"></div></div><div class="hint" id="phint"></div></div>
 <script>
+const EASE = 'cubic-bezier(.22,1,.36,1)', still = matchMedia('(prefers-reduced-motion: reduce)');
 const B = window.Launcher || {
   apps:()=>JSON.stringify(["Netflix","YouTube","Plex","Spotify","Kayo","Binge","ABC iview","SBS On Demand","9Now","10play","7plus","Optus Sport","Prime Video"].map(l=>({pkg:l,label:l}))),
   inputs:()=>JSON.stringify([{id:"hdmi1",label:"SHIELD",sub:"HDMI 1"},{id:"hdmi2",label:"HDMI 2"},{id:"hdmi3",label:"HDMI 3"},{id:"hdmi4",label:"HDMI 4"}]),
@@ -228,7 +244,7 @@ function render(){
     // the contact sheet holds still and only slides once focus nears its right-hand end
     track.style.transform = `translateX(${-Math.max(0, els[ai].offsetLeft - 1100)}px)`;
   } else track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;
-  [...headline.children].forEach((e,i)=>e.classList.toggle('on',i===ai));
+  [...headline.children].forEach((e,i)=>{ e.classList.toggle('on',i===ai); e.classList.toggle('l',i<ai); });
   document.body.classList.toggle('away', row===1);
   [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
 }
@@ -239,6 +255,12 @@ function activate(){
 
 // moving an app: ◀ ▶ swap it with its neighbour, OK keeps the new order, Back puts it back
 const hintEl = document.getElementById('movehint');
+// a swap rebuilds the row, so each of the pair slides from where it was, in step with the row
+const at = i => [track.children[i].offsetLeft, track.children[i].offsetTop];
+function slide(e, [x,y]){
+  const [x1,y1] = at([...track.children].indexOf(e));
+  if(!still.matches) e.animate([{translate:`${x-x1}px ${y-y1}px`},{translate:'0 0'}],{duration:450,easing:EASE});
+}
 function startMove(){
   moving = {ai, apps:apps.slice()};
   hintEl.innerHTML = `${pref('layout')==='vertical'?'▲ ▼':'◀ ▶'} move &nbsp;·&nbsp; OK to place &nbsp;·&nbsp; Back to cancel`;
@@ -251,7 +273,11 @@ function endMove(keep){
 }
 function moveKey(k){
   const j = ai + (k==='ArrowLeft' ? -1 : k==='ArrowRight' ? 1 : 0);
-  if(j!==ai && j>=0 && j<apps.length){ [apps[ai],apps[j]] = [apps[j],apps[ai]]; ai = j; build(); render(); }
+  if(j!==ai && j>=0 && j<apps.length){
+    const was = ai, a = at(ai), b = at(j);
+    [apps[ai],apps[j]] = [apps[j],apps[ai]]; ai = j; build(); render();
+    slide(track.children[j], a); slide(track.children[was], b);
+  }
   else if(k==='Enter' && !hold) endMove(true); // not the key-repeat of the hold that started the move
   else if(k==='Escape') endMove(false);
 }
@@ -269,14 +295,19 @@ const TABS = [
 const tabsEl = document.getElementById('tabs'), optsEl = document.getElementById('opts'), phint = document.getElementById('phint');
 let ti = 0, inOpts = false;
 const keys = () => TABS[ti].keys.filter(k=>k!=='version' || current);
+// renderPanel() rebuilds the open section; selPanel() only moves focus, so the hairlines and arrows can animate
 function renderPanel(){
-  tabsEl.innerHTML = TABS.map((t,i)=>`<div class="tab${i===ti?' cur':''}${i===ti&&!inOpts?' sel':''}"><span>${t.label}</span></div>`).join('');
-  optsEl.innerHTML = keys().map((k,i)=>{
-    const sel = inOpts && i===pi ? ' sel' : '';
-    if(k==='version') return `<div class="opt version${sel}"><span class="lbl">${latest?'Update':'Version'}</span><span class="arr l">‹</span><span class="val">${latest?`Install ${latest}`:current}</span><span class="msg">${updateMsg || (latest ? `You have ${current}` : 'OK to check now')}</span></div>`;
+  if(!tabsEl.children.length) tabsEl.innerHTML = TABS.map(t=>`<div class="tab"><span>${t.label}</span></div>`).join('');
+  optsEl.innerHTML = keys().map(k=>{
+    if(k==='version') return `<div class="opt version"><span class="lbl">${latest?'Update':'Version'}</span><span class="arr l">‹</span><span class="val">${latest?`Install ${latest}`:current}</span><span class="msg">${updateMsg || (latest ? `You have ${current}` : 'OK to check now')}</span></div>`;
     const o = OPTS.find(o=>o.key===k);
-    return `<div class="opt${sel}"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`;
+    return `<div class="opt"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`;
   }).join('');
+  selPanel();
+}
+function selPanel(){
+  [...tabsEl.children].forEach((e,i)=>{ e.classList.toggle('cur',i===ti); e.classList.toggle('sel',i===ti&&!inOpts); });
+  [...optsEl.children].forEach((e,i)=>e.classList.toggle('sel',inOpts&&i===pi));
   phint.innerHTML = inOpts ? '▲ ▼ choose &nbsp;·&nbsp; ◀ ▶ change &nbsp;·&nbsp; Back to sections'
     : '▲ ▼ choose &nbsp;·&nbsp; ▶ open &nbsp;·&nbsp; Back to close &nbsp;·&nbsp; Hold OK on an app to move it';
 }
@@ -289,13 +320,15 @@ function cycle(d){
   prefs[o.key] = o.choices[(i+d+o.choices.length)%o.choices.length][0];
   save('prefs', prefs);
   applyPrefs(); apps = arrange(apps); build(); render(); renderPanel(); wake();
+  // the new value nudges in from the side it came from
+  if(!still.matches) optsEl.children[pi].querySelector('.val').animate([{opacity:.3,transform:`translateX(${d*16}px)`},{opacity:1,transform:'none'}],{duration:250,easing:EASE});
 }
-function panelBack(){ if(inOpts){ inOpts = false; renderPanel(); } else showPanel(false); }
+function panelBack(){ if(inOpts){ inOpts = false; selPanel(); } else showPanel(false); }
 function panelKey(k){
   if(k==='Escape'){ panelBack(); return true; }
   if(!inOpts) switch(k){
-    case 'ArrowUp': ti=Math.max(0,ti-1); break;
-    case 'ArrowDown': ti=Math.min(TABS.length-1,ti+1); break;
+    case 'ArrowUp': if(ti>0){ ti--; renderPanel(); } return true;
+    case 'ArrowDown': if(ti<TABS.length-1){ ti++; renderPanel(); } return true;
     case 'ArrowRight': case 'Enter': inOpts = true; pi = 0; break;
     case 'ArrowLeft': break;
     default: return false;
@@ -306,7 +339,7 @@ function panelKey(k){
     case 'ArrowRight': case 'Enter': cycle(1); return true;
     default: return false;
   }
-  renderPanel(); return true;
+  selPanel(); return true;
 }
 // called by the app on the remote's Back button
 window.back = () => { if(moving) endMove(false); else if(open) panelBack(); };
@@ -355,13 +388,20 @@ setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*
 // called by the app when an HDMI input connects or drops, or device names arrive (they load in the background)
 window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras()); ii = Math.min(ii, inputs.length-1); build(); render(); };
 
+// coming home: the row snaps to the first app (no visible rewind), then the screen settles in from top to bottom
+function enter(){
+  document.body.classList.remove('pre');
+  track.style.transition = 'none'; render(); track.offsetWidth; track.style.transition = '';
+  if(!still.matches) ['.clock','#headline','#apps','#inputs'].forEach((s,i)=>document.querySelector(s).animate([{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'none'}],{duration:600,delay:i*70,easing:EASE,fill:'backwards'}));
+}
+
 // called by the app when it returns to the foreground
 window.refresh = () => {
   clearTimeout(hold); hold = null; moving = null; document.body.classList.remove('moving');
-  icons = {}; apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake();
+  icons = {}; apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); enter(); wake();
   checkUpdate();
 };
 applyPrefs();
-document.fonts.ready.then(()=>{ build(); render(); wake(); checkUpdate(); });
+document.fonts.ready.then(()=>{ build(); enter(); wake(); checkUpdate(); });
 </script>
 </body></html>

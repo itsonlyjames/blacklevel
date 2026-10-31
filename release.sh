@@ -103,7 +103,7 @@ read -r -p "Commit, tag $TAG, push and create a $KIND release? [y/N] " answer
 [[ $answer == [yY] ]] || fail "Stopped. Nothing was committed or uploaded."
 
 git add "$PLIST" "$MANIFEST"
-git commit -q -m "Release $VERSION"
+git commit -q -m "chore: release $VERSION"
 trap - EXIT
 git tag -a "$TAG" -m "Blacklevel $VERSION"
 git push -q origin main "$TAG"

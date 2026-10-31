@@ -60,7 +60,6 @@ This repo is small and dependency-free on purpose, which makes it easy to hand t
 - `launcher/`: Blacklevel Home. Kotlin `HomeActivity.kt` hosts a WebView; the whole UI is `app/assets/index.html`. Built by `build.sh` with `kotlinc`, `d8` and `aapt2`; no Gradle. Design intent lives in `launcher/.impeccable.md`; read it before touching the UI.
 - `menubar/`: Blacklevel Remote. A Swift package: `BraviaClient.swift` (REST + IRCC), `TVStore.swift` (state), `Views.swift` (SwiftUI), `Support.swift` (keychain, helpers), `SelfTest.swift`. Built by `build.sh`; no Xcode project.
 - `docs/`: user-facing setup and troubleshooting. `docs/images/` holds the screenshots used in READMEs.
-- `screensaver/` is git-ignored (Sony's artwork, personal use only). Never commit it or copy from it into tracked files.
 
 **Ground rules**
 

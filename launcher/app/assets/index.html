@@ -63,13 +63,50 @@ body.vertical #inputs{right:auto;width:640px;flex-direction:column;align-items:f
 body.vertical .inp::after{margin-top:6px}
 body.vertical .inp.settings{margin-left:0;margin-top:28px}
 
+/* icons: a contact sheet of the apps' own icons, close together, with the focused app's name as the headline.
+   At rest the icons fall into the room's warm grey; only the focused one keeps its colour. */
+.app img,.app .ph,#headline{display:none}
+body.icons #apps{top:640px;height:160px}
+body.icons #track{align-items:flex-start;gap:24px}
+body.icons .app{font-size:0;line-height:0;transition:opacity .45s var(--ease),transform .35s var(--ease)}
+body.icons .app.past{opacity:1}
+body.icons .app .nm{display:none}
+body.icons .app img,body.icons .app .ph{display:block;width:112px;height:112px;border-radius:var(--icon-radius,0);filter:grayscale(1) sepia(.35) brightness(.42);transition:filter .5s var(--ease)}
+body.icons .app .ph{background:var(--faint);font:600 48px/112px Text;text-align:center;color:var(--ink)}
+body.icons .app.sel img,body.icons .app.sel .ph,body.nofade .app img,body.nofade .app .ph{filter:none}
+body.icons .app::after{margin-top:20px}
+body.icons .app.moving{transform:translateY(-16px)}
+body.icons #headline{display:block;position:absolute;left:128px;top:420px;width:1664px;height:180px;transition:opacity .3s var(--ease)}
+#headline span{position:absolute;left:0;bottom:0;font-family:Display;font-size:150px;line-height:1;white-space:nowrap;opacity:0;transform:translateY(16px);transition:opacity .35s var(--ease),transform .5s var(--ease),color .3s}
+#headline span.on{opacity:1;transform:none}
+body.away #headline{opacity:.4}
+body.moving #headline span{color:var(--accent)}
+/* vertical: one column of icons, the focused app's name set out to the right of its icon */
+body.vertical.icons #headline{display:none}
+body.vertical.icons #apps{top:82px;height:auto}
+body.vertical.icons #track{gap:24px;padding-top:16px}
+body.vertical.icons .app{position:relative;overflow:visible}
+body.vertical.icons .app .nm{display:block;position:absolute;left:148px;top:56px;font-size:var(--app-size,100px);line-height:1;opacity:0;transform:translate(-12px,-55%);transition:opacity .3s var(--ease),transform .4s var(--ease)}
+body.vertical.icons .app.sel .nm{opacity:1;transform:translate(0,-55%)}
+body.vertical.icons .app::after{margin-top:14px;width:112px}
+
 /* customise panel: covers the stage, same type, same focus hairline */
-#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .35s var(--ease),visibility 0s .35s}
+#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;display:flex;flex-direction:column;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .35s var(--ease),visibility 0s .35s}
 body.panel #panel{opacity:1;visibility:visible;transition:opacity .35s var(--ease)}
 body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
-#panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:48px}
+#panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:64px}
+/* sections down the left, the open section's options on the right, split by a faint rule that runs from the title to the hints.
+   The panel only shows while you're in it, so the rule is no burn-in risk. */
+.sections{flex:1;margin-bottom:96px;display:grid;grid-template-columns:360px 1fr}
+#tabs{border-right:1px solid oklch(21% .01 62)}
+#opts{padding-left:80px}
+.tab{font-size:40px;font-weight:500;color:var(--dim);margin-bottom:18px;transition:color .3s}
+.tab.cur{color:var(--ink)}
+.tab span{display:inline-block}
+.tab span::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .4s var(--ease),opacity .2s;margin-top:10px}
+.tab.sel span::after{transform:scaleX(1);opacity:1}
 .opt{display:flex;align-items:baseline;font-size:40px;font-weight:500;color:var(--dim);margin-bottom:18px;transition:color .3s}
-.opt .lbl{width:560px}
+.opt .lbl{width:480px}
 .opt .val{display:inline-block}
 .opt .arr{color:var(--faint);opacity:0;transition:opacity .2s}
 .opt .arr.l{margin-right:28px}
@@ -84,11 +121,12 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 <body>
 <div id="stage">
   <div class="clock"><div class="time" id="time"></div><div class="date" id="date"></div></div>
+  <div id="headline"></div>
   <div id="apps"><div id="track"></div></div>
   <div id="inputs"></div>
   <div id="movehint"></div>
 </div>
-<div id="panel"><h2>Customise</h2><div id="opts"></div><div class="hint">◀ ▶ change &nbsp;·&nbsp; Back to close &nbsp;·&nbsp; Hold OK on an app to move it</div></div>
+<div id="panel"><h2>Customise</h2><div class="sections"><div id="tabs"></div><div id="opts"></div></div><div class="hint" id="phint"></div></div>
 <script>
 const B = window.Launcher || {
   apps:()=>JSON.stringify(["Netflix","YouTube","Plex","Spotify","Kayo","Binge","ABC iview","SBS On Demand","9Now","10play","7plus","Optus Sport","Prime Video"].map(l=>({pkg:l,label:l}))),
@@ -99,9 +137,12 @@ const B = window.Launcher || {
 // launcher settings, remembered locally; each option's first choice is the default
 const OPTS = [
   {key:"layout", label:"Layout", choices:[["horizontal","Horizontal"],["vertical","Vertical"]]},
-  {key:"order", label:"App order", choices:[["recent","Recently opened"],["custom","Your order"]]},
-  {key:"names", label:"App names", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
-  {key:"size", label:"App name size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
+  {key:"view", label:"Show as", choices:[["names","Names"],["icons","Icons"]]},
+  {key:"shape", label:"Shape", choices:[["square","Square"],["rounded","Rounded"],["circle","Circle"]]},
+  {key:"fade", label:"Fade others", choices:[["on","On"],["off","Off"]]},
+  {key:"order", label:"Order", choices:[["recent","Recently opened"],["custom","Your order"]]},
+  {key:"names", label:"Length", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
+  {key:"size", label:"Size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
   {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
   {key:"dim", label:"Dim when idle", choices:[[1,"After 1 minute"],[5,"After 5 minutes"],[15,"After 15 minutes"]]},
   {key:"updates", label:"Updates", choices:[["daily","Check daily"],["off","Off"]]},
@@ -114,6 +155,9 @@ const short = l => pref('names')==='full' || l.length <= pref('names') ? l : l.s
 function applyPrefs(){
   document.documentElement.style.setProperty('--app-size', pref('size')+'px');
   document.body.classList.toggle('vertical', pref('layout')==='vertical'); scroll = 0;
+  document.body.classList.toggle('icons', pref('view')==='icons');
+  document.body.classList.toggle('nofade', pref('fade')==='off');
+  document.documentElement.style.setProperty('--icon-radius', {square:'0',rounded:'24%',circle:'50%'}[pref('shape')]);
   tick();
 }
 
@@ -155,8 +199,17 @@ const track = document.getElementById('track'), inRow = document.getElementById(
 const appsEl = document.getElementById('apps');
 let row = 0, ai = 0, ii = 0, pi = 0, open = false, scroll = 0, hold = null, moving = null;
 
+// each app's own launcher icon from the app, fetched once per visit; a plain initial stands in where there isn't one
+let icons = {};
+const icon = a => {
+  const src = icons[a.pkg] ?? (icons[a.pkg] = B.icon ? B.icon(a.pkg) : '');
+  return src ? `<img src="${src}" alt="">` : `<div class="ph">${a.label[0]}</div>`;
+};
+const headline = document.getElementById('headline');
 function build(){
-  track.innerHTML = apps.map(a=>`<div class="app">${short(a.label)}</div>`).join('');
+  const v = pref('view')==='icons';
+  track.innerHTML = apps.map(a=>`<div class="app">${v?icon(a):''}<span class="nm">${short(a.label)}</span></div>`).join('');
+  headline.innerHTML = v ? apps.map(a=>`<span>${a.label}</span>`).join('') : '';
   inRow.innerHTML = inputs.map(x=>`<div class="inp${x.id==='__customise'?' settings':''}">${x.label}${x.sub?`<small>${x.sub}</small>`:''}</div>`).join('');
 }
 function render(){
@@ -171,7 +224,12 @@ function render(){
     track.style.transform = `translateY(${-scroll}px)`;
     appsEl.classList.toggle('more', track.offsetHeight - scroll > appsEl.clientHeight + 1);
     appsEl.classList.toggle('scrolled', scroll > 0);
+  } else if(pref('view')==='icons'){
+    // the contact sheet holds still and only slides once focus nears its right-hand end
+    track.style.transform = `translateX(${-Math.max(0, els[ai].offsetLeft - 1100)}px)`;
   } else track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;
+  [...headline.children].forEach((e,i)=>e.classList.toggle('on',i===ai));
+  document.body.classList.toggle('away', row===1);
   [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
 }
 function activate(){
@@ -198,34 +256,60 @@ function moveKey(k){
   else if(k==='Escape') endMove(false);
 }
 
-const optsEl = document.getElementById('opts');
-// the options, then one row for the version: OK checks now, or installs the update it found
-const rows = () => OPTS.length + (current ? 1 : 0);
+// Customise: sections down the left, the open section's options on the right.
+// ▲ ▼ pick a section, ▶ or OK goes into its options; there ◀ ▶ change a value and Back returns to the sections.
+// Updates ends with one row for the version: OK checks now, or installs the update it found.
+const TABS = [
+  {label:"Apps", keys:["view","order"]},
+  {label:"Names", keys:["names","size"]},
+  {label:"Icons", keys:["shape","fade"]},
+  {label:"Screen", keys:["layout","clock","dim"]},
+  {label:"Updates", keys:["updates","version"]},
+];
+const tabsEl = document.getElementById('tabs'), optsEl = document.getElementById('opts'), phint = document.getElementById('phint');
+let ti = 0, inOpts = false;
+const keys = () => TABS[ti].keys.filter(k=>k!=='version' || current);
 function renderPanel(){
-  optsEl.innerHTML = OPTS.map((o,i)=>`<div class="opt${i===pi?' sel':''}"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`).join('')
-    + (current ? `<div class="opt version${pi===OPTS.length?' sel':''}"><span class="lbl">${latest?'Update':'Version'}</span><span class="arr l">‹</span><span class="val">${latest?`Install ${latest}`:current}</span><span class="msg">${updateMsg || (latest ? `You have ${current}` : 'OK to check now')}</span></div>` : '');
+  tabsEl.innerHTML = TABS.map((t,i)=>`<div class="tab${i===ti?' cur':''}${i===ti&&!inOpts?' sel':''}"><span>${t.label}</span></div>`).join('');
+  optsEl.innerHTML = keys().map((k,i)=>{
+    const sel = inOpts && i===pi ? ' sel' : '';
+    if(k==='version') return `<div class="opt version${sel}"><span class="lbl">${latest?'Update':'Version'}</span><span class="arr l">‹</span><span class="val">${latest?`Install ${latest}`:current}</span><span class="msg">${updateMsg || (latest ? `You have ${current}` : 'OK to check now')}</span></div>`;
+    const o = OPTS.find(o=>o.key===k);
+    return `<div class="opt${sel}"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`;
+  }).join('');
+  phint.innerHTML = inOpts ? '▲ ▼ choose &nbsp;·&nbsp; ◀ ▶ change &nbsp;·&nbsp; Back to sections'
+    : '▲ ▼ choose &nbsp;·&nbsp; ▶ open &nbsp;·&nbsp; Back to close &nbsp;·&nbsp; Hold OK on an app to move it';
 }
-function showPanel(on){ open = on; pi = 0; document.body.classList.toggle('panel', on); if(on) renderPanel(); }
+// opens on Updates when there's one to install
+function showPanel(on){ open = on; pi = 0; inOpts = false; ti = latest ? TABS.length-1 : 0; document.body.classList.toggle('panel', on); if(on) renderPanel(); }
 function cycle(d){
-  if(pi===OPTS.length){ if(d>0) updateAction(); return; }
-  const o = OPTS[pi], i = o.choices.findIndex(c=>c[0]===pref(o.key));
+  const k = keys()[pi];
+  if(k==='version'){ if(d>0) updateAction(); return; }
+  const o = OPTS.find(o=>o.key===k), i = o.choices.findIndex(c=>c[0]===pref(o.key));
   prefs[o.key] = o.choices[(i+d+o.choices.length)%o.choices.length][0];
   save('prefs', prefs);
   applyPrefs(); apps = arrange(apps); build(); render(); renderPanel(); wake();
 }
+function panelBack(){ if(inOpts){ inOpts = false; renderPanel(); } else showPanel(false); }
 function panelKey(k){
-  switch(k){
+  if(k==='Escape'){ panelBack(); return true; }
+  if(!inOpts) switch(k){
+    case 'ArrowUp': ti=Math.max(0,ti-1); break;
+    case 'ArrowDown': ti=Math.min(TABS.length-1,ti+1); break;
+    case 'ArrowRight': case 'Enter': inOpts = true; pi = 0; break;
+    case 'ArrowLeft': break;
+    default: return false;
+  } else switch(k){
     case 'ArrowUp': pi=Math.max(0,pi-1); break;
-    case 'ArrowDown': pi=Math.min(rows()-1,pi+1); break;
+    case 'ArrowDown': pi=Math.min(keys().length-1,pi+1); break;
     case 'ArrowLeft': cycle(-1); return true;
     case 'ArrowRight': case 'Enter': cycle(1); return true;
-    case 'Escape': showPanel(false); return true;
     default: return false;
   }
   renderPanel(); return true;
 }
 // called by the app on the remote's Back button
-window.back = () => { if(moving) endMove(false); else if(open) showPanel(false); };
+window.back = () => { if(moving) endMove(false); else if(open) panelBack(); };
 
 document.addEventListener('keydown',e=>{
   wake();
@@ -274,7 +358,7 @@ window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras());
 // called by the app when it returns to the foreground
 window.refresh = () => {
   clearTimeout(hold); hold = null; moving = null; document.body.classList.remove('moving');
-  apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake();
+  icons = {}; apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake();
   checkUpdate();
 };
 applyPrefs();

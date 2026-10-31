@@ -8,6 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.media.tv.TvContract
 import android.media.tv.TvInputInfo
 import android.media.tv.TvInputManager
@@ -17,10 +20,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Base64
 import android.view.KeyEvent
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import org.json.JSONArray
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -143,6 +148,32 @@ class HomeActivity : Activity() {
                 .sortedWith(compareBy({ order(it.first) }, { it.second.lowercase() }))
                 .forEach { (pkg, label) -> out.put(JSONObject().put("pkg", pkg).put("label", label)) }
             return out.toString()
+        }
+
+        // An app's launcher icon as a square PNG data URL, drawn at twice the size the page shows it.
+        // Kept per install, so an app that updates its icon gets the new one.
+        private val icons = HashMap<String, String>()
+
+        @JavascriptInterface
+        fun icon(pkg: String): String {
+            val pm = packageManager
+            val stamp = try { pm.getPackageInfo(pkg, 0).lastUpdateTime } catch (e: Exception) { return "" }
+            return icons.getOrPut("$pkg@$stamp") {
+                val drawable = try {
+                    pm.getLeanbackLaunchIntentForPackage(pkg)?.let { pm.getActivityIcon(it) } ?: pm.getApplicationIcon(pkg)
+                } catch (e: Exception) { return "" }
+                val bitmap = Bitmap.createBitmap(224, 224, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                if (drawable is AdaptiveIconDrawable) {
+                    // Drawn unmasked and square, so the page picks the shape. The layers are 1.5x the visible icon.
+                    listOfNotNull(drawable.background, drawable.foreground).forEach { it.setBounds(-56, -56, 280, 280); it.draw(canvas) }
+                } else {
+                    drawable.setBounds(0, 0, 224, 224)
+                    drawable.draw(canvas)
+                }
+                val png = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                "data:image/png;base64," + Base64.encodeToString(png.toByteArray(), Base64.NO_WRAP)
+            }
         }
 
         // One entry per connected HDMI port, named after the HDMI-CEC device on it ("SHIELD") when

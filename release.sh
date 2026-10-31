@@ -3,17 +3,19 @@
 #   ./release.sh 1.1.0             draft release: check it on GitHub, then press Publish
 #   ./release.sh 1.1.0 --publish   publish straight away
 #   ./release.sh 1.1.0 --dry-run   build, sign and notarise only: no commit, tag, push or upload
+#   --no-scan                      skip the check for private details in the notes and built apps
 # Notes come from release/<version>/NOTES.md. Signing uses the Developer ID certificate and the
 # "blacklevel" notarytool profile in your keychain; neither leaves this Mac.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 VERSION=${1:-}
-PUBLISH=0 DRY=0
+PUBLISH=0 DRY=0 SCAN=1
 for arg in "${@:2}"; do
   case $arg in
     --publish) PUBLISH=1 ;;
     --dry-run) DRY=1 ;;
+    --no-scan) SCAN=0 ;;
     *) echo "Unknown option $arg" >&2; exit 1 ;;
   esac
 done
@@ -83,6 +85,20 @@ ditto -c -k --keepParent --norsrc --noextattr "$APP" "$ZIP"
 step "Building Blacklevel Home"
 launcher/build.sh >/dev/null
 cp launcher/build/home.apk "$APK"
+
+# The pre-push hook guards git pushes; the notes and apps go to GitHub without it, so run its checks here.
+# It's local only (.git/hooks/pre-push), so this step is skipped where it isn't installed.
+HOOK=.git/hooks/pre-push
+if (( SCAN )) && [[ -x $HOOK ]]; then
+  step "Checking the notes and apps for private details"
+  UNPACKED=$(mktemp -d)
+  unzip -q "$APK" -d "$UNPACKED"
+  FILES=("$APP/Contents/MacOS/BlacklevelRemote" "$APP/Contents/Info.plist")
+  [[ -s $NOTES ]] && FILES+=("$NOTES")
+  while IFS= read -r f; do FILES+=("$f"); done < <(find "$UNPACKED" -type f ! -path '*/fonts/*')
+  "$HOOK" --files "${FILES[@]}" || { rm -rf "$UNPACKED"; fail "Private details found (rerun with --no-scan if they're fine)"; }
+  rm -rf "$UNPACKED"
+fi
 
 (cd "$OUT" && shasum -a 256 "$(basename "$ZIP")" "$(basename "$APK")" > SHA256SUMS.txt)
 

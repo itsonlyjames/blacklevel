@@ -52,7 +52,8 @@ Verified on the A80J on 30 October 2026 with the earlier build (package `tv.hija
 | `com.google.android.tungsten.setupwraith` (Google TV setup and recovery) | disabled |
 | `tv.samba.ssm` (Samba TV) | disabled (separately, for privacy) |
 | `com.sony.dtv.homekit`, `com.sonypicturescore`, `com.apple.atve.sony.appletv`, `com.sony.dtv.kenhchonloc`, `com.sony.dtv.b2b.softap` | disabled from the factory; leave them |
-| `tv.hijacking.home` (Blacklevel Home, earlier package name) | installed; home screen and HOME role holder |
+| `io.github.itsonlyjames.blacklevel` (Blacklevel Home) | installed 31 October 2026; home screen and HOME role holder |
+| `tv.hijacking.home` (Blacklevel Home, earlier package name) | removed |
 
 ### After every Blacklevel Home install or update
 
@@ -63,7 +64,7 @@ adb shell cmd package set-home-activity --user 0 io.github.itsonlyjames.blacklev
 adb shell cmd role add-role-holder --user 0 android.app.role.HOME io.github.itsonlyjames.blacklevel
 ```
 
-The source now builds `io.github.itsonlyjames.blacklevel`, but the TV still runs the earlier `tv.hijacking.home`. Those are two different apps to Android. When you first install the new build, run the two commands above, press Home to check it opens, then remove the old one with `adb uninstall tv.hijacking.home`.
+Builds before 31 October 2026 used the package `tv.hijacking.home`, which Android treats as a different app. If you have it, install the new build, run the two commands above, press Home to check it opens, then remove the old one with `adb uninstall tv.hijacking.home`. The new build starts with an empty recent-apps order.
 
 ## Before a factory reset or a major Google TV update
 
@@ -85,8 +86,8 @@ adb shell pm enable com.google.android.tungsten.setupwraith
 adb shell pm enable com.google.android.apps.tv.launcherx
 adb shell cmd package set-home-activity --user 0 com.google.android.apps.tv.launcherx/.home.HomeActivity
 adb shell cmd role add-role-holder --user 0 android.app.role.HOME com.google.android.apps.tv.launcherx
-adb uninstall tv.hijacking.home                      # earlier package name, currently installed
-adb uninstall io.github.itsonlyjames.blacklevel      # if you've installed the renamed build
+adb uninstall io.github.itsonlyjames.blacklevel
+adb uninstall tv.hijacking.home                      # only if a pre-rename build is still installed
 ```
 
 Then press Home to check it opens Google TV.

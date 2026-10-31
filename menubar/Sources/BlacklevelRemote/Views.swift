@@ -144,6 +144,9 @@ struct MenuView: View {
         .padding(16)
         .frame(width: 320)
         .fixedSize(horizontal: false, vertical: true)
+        // Clicking anywhere that isn't a control ends typing, like any Mac window. Buttons keep their clicks.
+        .contentShape(Rectangle())
+        .onTapGesture { endEditing() }
         .background(GeometryReader { proxy in
             Color.clear.preference(key: MenuHeightKey.self, value: proxy.size.height)
         })
@@ -351,6 +354,11 @@ struct VolumeRow: View {
     }
 }
 
+/// Takes keyboard focus off whichever text field has it.
+@MainActor func endEditing() {
+    NSApp.keyWindow?.makeFirstResponder(nil)
+}
+
 // MARK: - Apps
 
 /// A search field instead of the full list: the TV reports 40-odd apps, most of them Sony extras.
@@ -379,6 +387,7 @@ struct AppSearch: View {
                     .font(.system(size: 12))
                     .focused($searchFocused)
                     .onSubmit { if let first = results.first { open(first) } }
+                    .onExitCommand { searchFocused = false }
                 if !query.isEmpty {
                     Button { query = "" } label: { Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)) }
                         .buttonStyle(.plain)
@@ -766,6 +775,7 @@ struct TextSender: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
                     .onSubmit(send)
+                    .onExitCommand(perform: endEditing)
             }
             .padding(.horizontal, 10)
             .frame(height: 30)

@@ -96,6 +96,7 @@ final class TVStore: ObservableObject {
     @Published var power: String?          // "active" / "standby" / nil when unreachable
     @Published var authorized: Bool?       // nil until we've tried an authenticated call
     @Published var nowPlaying: String?
+    @Published var playingURI: String?     // what getPlayingContentInfo says is on screen, e.g. "extInput:hdmi?port=2"
     @Published var volume: Double = 0
     @Published var maxVolume: Double = 100
     @Published var muted = false
@@ -317,7 +318,7 @@ final class TVStore: ObservableObject {
             set(\.message, error.localizedDescription)
             return
         }
-        guard isOn else { set(\.nowPlaying, nil); return }
+        guard isOn else { set(\.nowPlaying, nil); set(\.playingURI, nil); return }
 
         async let volumeLoaded: () = loadVolume()
         async let playingLoaded: () = loadNowPlaying()
@@ -333,14 +334,16 @@ final class TVStore: ObservableObject {
     }
 
     private func loadNowPlaying() async {
-        guard authorized == true else { set(\.nowPlaying, nil); return }
+        guard authorized == true else { set(\.nowPlaying, nil); set(\.playingURI, nil); return }
         do {
             let info = try await client.call("avContent", "getPlayingContentInfo").first as? [String: Any]
             let title = (info?["title"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             set(\.nowPlaying, title ?? info?["source"] as? String)
+            set(\.playingURI, (info?["uri"] as? String).flatMap { $0.isEmpty ? nil : $0 })
         } catch {
             // Sony returns "Illegal State" while an app (not an input or channel) is on screen; it doesn't say which.
             set(\.nowPlaying, nil)
+            set(\.playingURI, nil)
         }
     }
 
@@ -383,6 +386,16 @@ final class TVStore: ObservableObject {
                           connected: row["connection"] as? Bool ?? true)
         })
         return true
+    }
+
+    /// Whether this input is on screen. The TV may report the CEC device's URI for an HDMI port we show
+    /// as its HDMI entry (see loadSources), so HDMI and CEC URIs on the same port count as the same input.
+    func isPlaying(_ source: Source) -> Bool {
+        guard let playing = playingURI else { return false }
+        if playing == source.uri { return true }
+        let hdmiOrCEC = { (uri: String) in uri.hasPrefix("extInput:hdmi") || uri.hasPrefix("extInput:cec") }
+        guard hdmiOrCEC(playing), hdmiOrCEC(source.uri), let port = Self.port(of: playing) else { return false }
+        return Self.port(of: source.uri) == port
     }
 
     /// "extInput:cec?type=player&port=4&logicalAddr=b" -> "4"

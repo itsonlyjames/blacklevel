@@ -616,7 +616,7 @@ struct InputsGrid: View {
                     Button { store.play(source) } label: {
                         Text(source.title).lineLimit(1).padding(.horizontal, 6).frame(maxWidth: .infinity, minHeight: 30)
                     }
-                    .buttonStyle(TileStyle())
+                    .buttonStyle(TileStyle(prominent: store.isPlaying(source)))
                     .opacity(source.connected ? 1 : 0.4)
                 }
             }

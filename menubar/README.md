@@ -4,9 +4,13 @@ A native SwiftUI menu bar remote for Sony BRAVIA TVs. It uses Sony's BRAVIA REST
 
 <img src="../docs/images/remote-menu.png" alt="Blacklevel Remote" width="340">
 
+## Install
+
+Download `BlacklevelRemote-<version>-macOS.zip` from [Releases](https://github.com/itsonlyjames/blacklevel/releases/latest), unzip it and move **BlacklevelRemote.app** to Applications. It's signed and notarised, so it opens like any other app. Needs macOS 14 or later; runs on Apple silicon and Intel.
+
 ## Build and run
 
-Requires macOS 14+ and Swift 5.9+ (`xcode-select --install`).
+To build it yourself instead, you need macOS 14+ and Swift 5.9+ (`xcode-select --install`). `build.sh` signs with your Developer ID if one is in your keychain, and ad hoc otherwise.
 
 ```bash
 ./build.sh

@@ -22,8 +22,8 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
 ## Quick start
 
 1. **Prepare the TV**: turn on IP control with a pre-shared key, and (for Home) network debugging. See [TV setup](docs/tv-setup.md).
-2. **Remote**: `cd menubar && ./build.sh && open build/BlacklevelRemote.app`, then enter the TV's address and key in **Settings…**. [More](menubar/README.md)
-3. **Home**: `cd launcher && ./build.sh`, then install and set it as the home screen with `adb`. [More](launcher/README.md)
+2. **Remote**: download `BlacklevelRemote-<version>-macOS.zip` from [Releases](https://github.com/itsonlyjames/blacklevel/releases/latest), move the app to Applications and open it (it's signed and notarised), then enter the TV's address and key in **Settings…**. Or build it: `cd menubar && ./build.sh`. [More](menubar/README.md)
+3. **Home**: download `BlacklevelHome-<version>.apk` from [Releases](https://github.com/itsonlyjames/blacklevel/releases/latest) (or `cd launcher && ./build.sh`), then install and set it as the home screen with `adb`. [More](launcher/README.md)
 
 Both parts are independent. Use either, or both.
 
@@ -36,12 +36,6 @@ If you try it on another model, please open an issue with what worked and what d
 ## Further intentions
 
 Ideas, not promises. The rule stays the same: local network only, no accounts, no cloud, no third-party code.
-
-Next up:
-
-- **Signed and notarised remote**: sign Blacklevel Remote with a Developer ID and notarise it, so macOS opens it without the right-click workaround.
-
-Later:
 
 - **Mobile remote**: an iPhone (and maybe Android) app with the same features as the menu bar remote, built on the same BRAVIA REST API and IRCC calls. A phone remote that does only what the TV needs, without the vendor app's sign-in and suggestions.
 - **Windows tray remote**: the menu bar remote for Windows, living in the system tray. Same feature set, same "reads what your TV supports at runtime" approach.

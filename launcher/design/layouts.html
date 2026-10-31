@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Layout options</title>
+<style>
+@font-face{font-family:Display;src:url(../app/assets/fonts/InstrumentSerif-Regular.ttf)}
+@font-face{font-family:Text;src:url(../app/assets/fonts/HankenGrotesk.ttf);font-weight:100 900}
+:root{
+  --bg:oklch(13% 0.008 60);
+  --ink:oklch(90% 0.025 80);
+  --dim:oklch(46% 0.018 70);
+  --faint:oklch(30% 0.012 65);
+  --accent:oklch(74% 0.13 58);
+  --page:oklch(18% 0.008 60);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:Text;-webkit-font-smoothing:antialiased;padding:56px 16px 96px}
+header,main{max-width:1500px;margin:0 auto}
+header{padding:0 8px 40px}
+h1{font-family:Display;font-weight:400;font-size:64px;line-height:1}
+header p{margin-top:14px;color:var(--dim);font-size:17px;max-width:70ch;line-height:1.5}
+main{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,640px),1fr));gap:48px 40px}
+figure{min-width:0}
+.tv{position:relative;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--bg);box-shadow:0 0 0 1px oklch(26% .01 60)}
+.screen{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden}
+figcaption{padding:16px 4px 0}
+figcaption h2{font-size:19px;font-weight:600}
+figcaption h2 span{color:var(--accent);margin-right:10px;font-variant-numeric:tabular-nums}
+figcaption p{margin-top:6px;color:var(--dim);font-size:15px;line-height:1.5}
+figcaption .dpad{color:var(--faint);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+
+/* shared pieces inside a 1920x1080 screen */
+.time{font-family:Display;line-height:.9;letter-spacing:-.01em}
+.date{font-size:30px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.app{font-family:Display;color:var(--dim);white-space:nowrap}
+.app.sel{color:var(--ink)}
+.inp{font-size:40px;font-weight:500;color:var(--dim);white-space:nowrap}
+.inp small{font-size:24px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:14px}
+.sel-line{position:relative}
+.sel-line::after{content:"";position:absolute;left:0;right:0;height:4px;border-radius:2px;background:var(--accent)}
+.abs{position:absolute}
+.row{display:flex;align-items:baseline}
+</style></head>
+<body>
+<header>
+  <h1>Layout options</h1>
+  <p>Six ways to arrange the clock, the apps and the inputs. All use the same type, colours and focus hairline as today, and all work with a D-pad alone. Pick one or more and they become choices under Customise → Layout. A is today's layout.</p>
+</header>
+<main>
+
+<!-- A: current dial -->
+<figure>
+  <div class="tv"><div class="screen">
+    <div class="abs" style="left:128px;top:96px"><div class="time" style="font-size:184px">7:42</div><div class="date" style="margin:22px 0 0 6px">Saturday 31 October</div></div>
+    <div class="abs row" style="left:128px;top:540px;gap:72px;font-size:100px;line-height:1.5">
+      <div class="app sel sel-line">Netflix</div><div class="app">YouTube</div><div class="app">SmartTube</div><div class="app">Plex</div><div class="app">Spotify</div>
+    </div>
+    <div class="abs row" style="left:128px;right:128px;bottom:150px;gap:64px">
+      <div class="inp">SHIELD<small>HDMI 1</small></div><div class="inp">HDMI 2</div><div class="inp">HDMI 3</div><div class="inp" style="margin-left:auto">Customise</div><div class="inp">Settings</div>
+    </div>
+  </div></div>
+  <figcaption><h2><span>A</span>Dial (current)</h2><p>One row of apps that slides so the focused app sits at the left edge. Apps you've passed fade out.</p><div class="dpad">◀ ▶ apps · ▼ inputs</div></figcaption>
+</figure>
+
+<!-- B: vertical list -->
+<figure>
+  <div class="tv"><div class="screen">
+    <div class="abs" style="right:128px;top:96px;text-align:right"><div class="time" style="font-size:150px">7:42</div><div class="date" style="margin-top:20px">Saturday 31 October</div></div>
+    <div class="abs" style="left:128px;top:150px;font-size:44px;line-height:1.7">
+      <div class="app" style="opacity:.45">Spotify</div>
+      <div class="app">Plex</div>
+      <div class="app sel" style="font-size:120px;line-height:1.25;position:relative">Netflix<div style="position:absolute;left:-48px;top:50%;width:20px;height:4px;border-radius:2px;background:var(--accent)"></div></div>
+      <div class="app">YouTube</div>
+      <div class="app">SmartTube</div>
+      <div class="app" style="opacity:.6">ABC iview</div>
+      <div class="app" style="opacity:.3">SBS On Demand</div>
+    </div>
+    <div class="abs" style="right:128px;bottom:150px;text-align:right;display:flex;flex-direction:column;gap:22px">
+      <div class="inp">SHIELD<small>HDMI 1</small></div><div class="inp">HDMI 2</div><div class="inp">HDMI 3</div><div class="inp" style="margin-top:24px">Customise</div><div class="inp">Settings</div>
+    </div>
+  </div></div>
+  <figcaption><h2><span>B</span>List</h2><p>Apps in a column on the left, the focused one large in the middle and the rest fading away above and below. The clock and inputs sit on the right. Long names have room.</p><div class="dpad">▲ ▼ apps · ▶ inputs</div></figcaption>
+</figure>
+
+<!-- C: centred carousel -->
+<figure>
+  <div class="tv"><div class="screen">
+    <div class="abs" style="left:0;right:0;top:120px;text-align:center"><div class="time" style="font-size:150px">7:42</div><div class="date" style="margin-top:20px">Saturday 31 October</div></div>
+    <div class="abs row" style="left:0;right:0;top:500px;justify-content:center;gap:88px;line-height:1.5">
+      <div class="app" style="font-size:64px;opacity:.35">Spotify</div>
+      <div class="app" style="font-size:72px">Plex</div>
+      <div class="app sel sel-line" style="font-size:132px">Netflix</div>
+      <div class="app" style="font-size:72px">YouTube</div>
+      <div class="app" style="font-size:64px;opacity:.35">SmartTube</div>
+    </div>
+    <div class="abs row" style="left:0;right:0;bottom:150px;justify-content:center;gap:64px">
+      <div class="inp">SHIELD<small>HDMI 1</small></div><div class="inp">HDMI 2</div><div class="inp">HDMI 3</div><div class="inp" style="color:var(--faint)">·</div><div class="inp">Customise</div><div class="inp">Settings</div>
+    </div>
+  </div></div>
+  <figcaption><h2><span>C</span>Centred</h2><p>Everything on the centre line. The focused app sits large in the middle with its neighbours getting smaller either side, like a turntable.</p><div class="dpad">◀ ▶ apps · ▼ inputs</div></figcaption>
+</figure>
+
+<!-- D: paragraph / wall -->
+<figure>
+  <div class="tv"><div class="screen">
+    <div class="abs" style="left:128px;top:96px;display:flex;align-items:baseline;gap:40px"><div class="time" style="font-size:110px">7:42</div><div class="date">Saturday 31 October</div></div>
+    <div class="abs" style="left:128px;right:128px;top:300px;font-family:Display;font-size:84px;line-height:1.32;color:var(--dim)">
+      <span class="app sel sel-line">Netflix</span>&ensp;<span class="app">YouTube</span>&ensp;<span class="app">SmartTube</span>&ensp;<span class="app">Plex</span>&ensp;<span class="app">Spotify</span>&ensp;<span class="app">Kayo</span>&ensp;<span class="app">Binge</span>&ensp;<span class="app">Prime Video</span>&ensp;<span class="app">ABC iview</span>&ensp;<span class="app">SBS On Demand</span>&ensp;<span class="app">9Now</span>&ensp;<span class="app">10play</span>&ensp;<span class="app">7plus</span>
+    </div>
+    <div class="abs row" style="left:128px;right:128px;bottom:110px;gap:64px">
+      <div class="inp">SHIELD<small>HDMI 1</small></div><div class="inp">HDMI 2</div><div class="inp">HDMI 3</div><div class="inp" style="margin-left:auto">Customise</div><div class="inp">Settings</div>
+    </div>
+  </div></div>
+  <figcaption><h2><span>D</span>Paragraph</h2><p>Every app visible at once, set as lines of text. Nothing slides, so you always know where an app is. Best if you keep under ~15 apps.</p><div class="dpad">◀ ▶ ▲ ▼ move freely · inputs below</div></figcaption>
+</figure>
+
+<!-- E: clock first -->
+<figure>
+  <div class="tv"><div class="screen">
+    <div class="abs" style="left:128px;top:70px"><div class="time" style="font-size:400px;line-height:.85">7:42</div><div class="date" style="margin:28px 0 0 14px">Saturday 31 October</div></div>
+    <div class="abs row" style="left:128px;right:128px;bottom:230px;gap:56px;font-size:60px;line-height:1.5">
+      <div class="app sel sel-line">Netflix</div><div class="app">YouTube</div><div class="app">SmartTube</div><div class="app">Plex</div><div class="app">Spotify</div><div class="app">Kayo</div><div class="app">Binge</div>
+    </div>
+    <div class="abs row" style="left:128px;right:128px;bottom:130px;gap:56px">
+      <div class="inp" style="font-size:32px">SHIELD<small>HDMI 1</small></div><div class="inp" style="font-size:32px">HDMI 2</div><div class="inp" style="font-size:32px">HDMI 3</div><div class="inp" style="font-size:32px;margin-left:auto">Customise</div><div class="inp" style="font-size:32px">Settings</div>
+    </div>
+  </div></div>
+  <figcaption><h2><span>E</span>Clock first</h2><p>A big clock as the main thing on screen, with apps and inputs as two quiet rows along the bottom. Suits a TV left on the home screen. The OLED dim and drift still apply.</p><div class="dpad">◀ ▶ apps · ▼ inputs</div></figcaption>
+</figure>
+
+<!-- F: split -->
+<figure>
+  <div class="tv"><div class="screen">
+    <div class="abs" style="left:128px;top:96px;bottom:150px;width:620px;display:flex;flex-direction:column">
+      <div class="time" style="font-size:184px">7:42</div><div class="date" style="margin:22px 0 0 6px">Saturday 31 October</div>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:24px">
+        <div class="inp">SHIELD<small>HDMI 1</small></div><div class="inp">HDMI 2</div><div class="inp">HDMI 3</div><div class="inp" style="margin-top:20px;color:var(--faint)">Customise · Settings</div>
+      </div>
+    </div>
+    <div class="abs" style="left:880px;top:0;bottom:0;width:2px;background:var(--faint);opacity:.5"></div>
+    <div class="abs" style="left:980px;top:150px;display:grid;grid-template-columns:auto auto;gap:6px 96px;font-size:76px;line-height:1.35">
+      <div class="app sel sel-line">Netflix</div><div class="app">YouTube</div>
+      <div class="app">SmartTube</div><div class="app">Plex</div>
+      <div class="app">Spotify</div><div class="app">Kayo</div>
+      <div class="app">Binge</div><div class="app">Prime Video</div>
+      <div class="app">ABC iview</div><div class="app">9Now</div>
+    </div>
+  </div></div>
+  <figcaption><h2><span>F</span>Split</h2><p>Clock and inputs in a column on the left, apps in a two-column grid on the right. Everything is visible without sliding, but each side gets less room.</p><div class="dpad">◀ ▶ ▲ ▼ in the grid · ◀ from the grid to the inputs</div></figcaption>
+</figure>
+
+</main>
+<script>
+// scale each 1920x1080 screen to its frame
+const fit = () => document.querySelectorAll('.tv').forEach(tv => tv.firstElementChild.style.transform = `scale(${tv.clientWidth/1920})`);
+addEventListener('resize', fit); document.fonts.ready.then(fit); fit();
+</script>
+<style>.sel-line::after{bottom:.12em}</style>
+</body></html>

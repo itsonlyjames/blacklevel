@@ -43,6 +43,20 @@ body.idle #stage{opacity:.32}
 .inp.sel{color:var(--ink)}
 .inp.settings{margin-left:auto}
 
+/* vertical layout: clock and inputs down the left, apps in one column on the right.
+   The column starts level with the clock and runs to the bottom of the screen, fading out; names keep the horizontal size. */
+body.vertical #apps{left:960px;right:128px;top:82px;bottom:0;height:auto}
+body.vertical #apps.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 140px),transparent);mask-image:linear-gradient(#000 calc(100% - 140px),transparent)}
+body.vertical #apps.scrolled{-webkit-mask-image:linear-gradient(transparent,#000 120px);mask-image:linear-gradient(transparent,#000 120px)}
+body.vertical #apps.more.scrolled{-webkit-mask-image:linear-gradient(transparent,#000 120px,#000 calc(100% - 140px),transparent);mask-image:linear-gradient(transparent,#000 120px,#000 calc(100% - 140px),transparent)}
+body.vertical #track{left:0;flex-direction:column;align-items:flex-start;gap:0;max-width:100%}
+body.vertical .app{line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+body.vertical .app.past{opacity:1}
+body.vertical .app::after{margin-top:-10px}
+body.vertical #inputs{right:auto;width:640px;flex-direction:column;align-items:flex-start;gap:20px}
+body.vertical .inp::after{margin-top:6px}
+body.vertical .inp.settings{margin-left:0;margin-top:28px}
+
 /* customise panel: covers the stage, same type, same focus hairline */
 #panel{position:absolute;inset:0;z-index:1;padding:96px 128px;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .35s var(--ease),visibility 0s .35s}
 body.panel #panel{opacity:1;visibility:visible;transition:opacity .35s var(--ease)}
@@ -81,6 +95,7 @@ let inputs = JSON.parse(B.inputs()).concat(extras);
 
 // launcher settings, remembered locally; each option's first choice is the default
 const OPTS = [
+  {key:"layout", label:"Layout", choices:[["horizontal","Horizontal"],["vertical","Vertical"]]},
   {key:"names", label:"App names", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
   {key:"size", label:"App name size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
   {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
@@ -89,10 +104,15 @@ const OPTS = [
 const prefs = (()=>{try{return JSON.parse(localStorage.prefs||"{}")}catch(e){return{}}})();
 const pref = k => { const o = OPTS.find(o=>o.key===k); return o.choices.some(c=>c[0]===prefs[k]) ? prefs[k] : o.choices[0][0]; };
 const short = l => pref('names')==='full' || l.length <= pref('names') ? l : l.slice(0, pref('names')).trimEnd()+'…';
-function applyPrefs(){ document.documentElement.style.setProperty('--app-size', pref('size')+'px'); tick(); }
+function applyPrefs(){
+  document.documentElement.style.setProperty('--app-size', pref('size')+'px');
+  document.body.classList.toggle('vertical', pref('layout')==='vertical'); scroll = 0;
+  tick();
+}
 
 const track = document.getElementById('track'), inRow = document.getElementById('inputs');
-let row = 0, ai = 0, ii = 0, pi = 0, open = false;
+const appsEl = document.getElementById('apps');
+let row = 0, ai = 0, ii = 0, pi = 0, open = false, scroll = 0;
 
 function build(){
   track.innerHTML = apps.map(a=>`<div class="app">${short(a.label)}</div>`).join('');
@@ -101,7 +121,16 @@ function build(){
 function render(){
   const els = track.children;
   [...els].forEach((e,i)=>{e.classList.toggle('sel',row===0&&i===ai);e.classList.toggle('past',i<ai)});
-  track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;
+  if(pref('layout')==='vertical'){
+    // scroll only as far as needed to keep the selected app inside the page margin (the inputs' 150px);
+    // the next one peeks out into the margin and fades off the bottom of the screen
+    const e = els[ai], view = appsEl.clientHeight - 150;
+    if(e.offsetTop < scroll) scroll = e.offsetTop;
+    if(e.offsetTop + e.offsetHeight > scroll + view) scroll = e.offsetTop + e.offsetHeight - view;
+    track.style.transform = `translateY(${-scroll}px)`;
+    appsEl.classList.toggle('more', track.offsetHeight - scroll > appsEl.clientHeight + 1);
+    appsEl.classList.toggle('scrolled', scroll > 0);
+  } else track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;
   [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
 }
 function activate(){
@@ -137,7 +166,10 @@ window.back = () => { if(open) showPanel(false); };
 document.addEventListener('keydown',e=>{
   wake();
   if(open){ if(panelKey(e.key)) e.preventDefault(); return; }
-  switch(e.key){
+  // the vertical layout turns the remote a quarter: ▲ ▼ along a column, ◀ ▶ between them
+  const v = pref('layout')==='vertical';
+  const key = !v ? e.key : {ArrowUp:'ArrowLeft',ArrowDown:'ArrowRight',ArrowLeft:'ArrowDown',ArrowRight:'ArrowUp'}[e.key] || e.key;
+  switch(key){
     case 'ArrowLeft': row===0 ? ai=Math.max(0,ai-1) : ii=Math.max(0,ii-1); break;
     case 'ArrowRight': row===0 ? ai=Math.min(apps.length-1,ai+1) : ii=Math.min(inputs.length-1,ii+1); break;
     case 'ArrowDown': row=1; break;
@@ -167,7 +199,7 @@ setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*
 window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras); ii = Math.min(ii, inputs.length-1); build(); render(); };
 
 // called by the app when it returns to the foreground
-window.refresh = () => { apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg)); build(); ai=0; ii=0; row=0; showPanel(false); render(); wake(); };
+window.refresh = () => { apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg)); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake(); };
 applyPrefs();
 document.fonts.ready.then(()=>{ build(); render(); wake(); });
 </script>

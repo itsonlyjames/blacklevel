@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:Display;src:url(../../launcher/app/assets/fonts/InstrumentSerif-Regular.ttf)}
+@font-face{font-family:Text;src:url(../../launcher/app/assets/fonts/HankenGrotesk.ttf);font-weight:100 900}
+:root{--ink:oklch(90% 0.025 80);--dim:oklch(46% 0.018 70);--accent:oklch(74% 0.13 58)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:720px;height:1280px;overflow:hidden;font-family:Text;-webkit-font-smoothing:antialiased;color:var(--ink)}
+body{position:relative;background:linear-gradient(170deg,oklch(20% 0.012 60),oklch(11% 0.008 60))}
+.glow{position:absolute;border-radius:50%;filter:blur(90px);background:oklch(74% 0.13 58 / .14)}
+.menubar{position:absolute;inset:0 0 auto 0;height:24px;background:oklch(16% 0.008 60 / .85);border-bottom:1px solid oklch(100% 0 0 / .06);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 14px;font-size:11px;font-weight:500;color:oklch(88% 0.01 80)}
+.menubar .tv{display:flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:5px;background:oklch(100% 0 0 / .14)}
+.menubar svg{width:13px;height:13px;opacity:.9}
+.tvset{position:absolute}
+.screen{border-radius:8px;padding:6px;background:#000;box-shadow:0 0 0 1px oklch(100% 0 0 / .08),0 30px 90px -20px #000}
+.screen img{display:block;width:100%;border-radius:2px}
+.stand{margin:0 auto;width:34%;height:7px;border-radius:0 0 5px 5px;background:#070605}
+.remote{position:absolute;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px oklch(100% 0 0 / .1),0 30px 70px -10px #000,0 10px 30px #000a}
+.remote img{display:block;width:100%}
+.brand{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+.brand i{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+h1{font-family:Display;font-weight:400;line-height:.98;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--dim)}
+p{font-size:18px;line-height:1.5;color:var(--dim)} p b{color:var(--ink);font-weight:500}
+.center{text-align:center} .center .brand{justify-content:center}
+</style></head><body><div class="menubar">
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 6.5a9 9 0 0 1 12 0M4.3 9a5.6 5.6 0 0 1 7.4 0M6.6 11.5a2.2 2.2 0 0 1 2.8 0"/></svg>
+<svg viewBox="0 0 22 12" style="width:19px" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y=".5" width="18" height="11" rx="3"/><rect x="2.5" y="2.5" width="11" height="7" rx="1.5" fill="currentColor"/><path d="M20.5 4v4" stroke-width="1.5"/></svg>
+<span class="tv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1.5"/><path d="M5 13.5h6"/></svg></span>
+<span>Fri 30 Oct&nbsp;&nbsp;6:56 pm</span></div><div class="glow" style="left:0;top:560px;width:560px;height:380px"></div><div style="position:absolute;left:44px;right:44px;top:170px"><div class="brand"><i></i>Blacklevel</div><h1 style="font-size:74px;margin-top:16px">Take your Sony TV back.<br><em>It's just a TV.</em></h1><p style="margin-top:22px"><b>A quiet home screen</b> for BRAVIA Google TV, and <b>a Mac menu bar remote.</b> No ads, no accounts, no cloud.</p></div><div class="tvset" style="left:-24px;width:600px;top:600px"><div class="screen"><img src="home-apps.png"></div><div class="stand"></div></div><div class="remote" style="right:32px;width:280px;top:720px;height:450px;-webkit-mask-image:linear-gradient(#000 70%,transparent)"><img src="remote-menu.png" style=""></div></body></html>

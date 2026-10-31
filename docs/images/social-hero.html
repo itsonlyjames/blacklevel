@@ -1,0 +1,54 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Display;src:url(../../launcher/app/assets/fonts/InstrumentSerif-Regular.ttf)}
+@font-face{font-family:Text;src:url(../../launcher/app/assets/fonts/HankenGrotesk.ttf);font-weight:100 900}
+:root{--bg:oklch(13% 0.008 60);--ink:oklch(90% 0.025 80);--dim:oklch(46% 0.018 70);--faint:oklch(30% 0.012 65);--accent:oklch(74% 0.13 58)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:900px;overflow:hidden;background:oklch(9% 0.006 60);font-family:Text;-webkit-font-smoothing:antialiased;color:var(--ink)}
+body{position:relative;background:
+  radial-gradient(1000px 700px at 38% 62%, oklch(26% 0.03 60), transparent 72%),
+  linear-gradient(160deg, oklch(20% 0.012 60), oklch(12% 0.008 60))}
+/* macOS menu bar */
+.menubar{position:absolute;inset:0 0 auto 0;height:30px;background:oklch(16% 0.008 60 / .85);backdrop-filter:blur(20px);border-bottom:1px solid oklch(100% 0 0 / .06);display:flex;align-items:center;justify-content:flex-end;gap:22px;padding:0 22px;font-size:13.5px;font-weight:500;color:oklch(88% 0.01 80)}
+.menubar .tv{display:flex;align-items:center;justify-content:center;width:30px;height:22px;border-radius:5px;background:oklch(100% 0 0 / .14)}
+.menubar svg{width:16px;height:16px}
+.menubar .ico{opacity:.85}
+/* TV */
+.tv-wrap{position:absolute;left:80px;top:212px;width:1070px}
+.screen{position:relative;border-radius:10px;padding:9px;background:linear-gradient(#050505,#000);box-shadow:0 0 0 1px oklch(100% 0 0 / .07),0 40px 120px -20px #000,0 0 200px -30px oklch(74% 0.13 58 / .22)}
+.screen img{display:block;width:100%;border-radius:3px}
+.stand{margin:0 auto;width:360px;height:10px;border-radius:0 0 6px 6px;background:linear-gradient(#0a0908,#050404)}
+/* remote */
+.remote{position:absolute;right:86px;top:40px;width:320px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px oklch(100% 0 0 / .1),0 30px 80px -10px #000,0 10px 30px #0008}
+.remote img{display:block;width:100%}
+/* copy */
+.copy{position:absolute;left:80px;top:64px}
+.brand{display:flex;align-items:center;gap:14px;font-size:15px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+.brand i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+h1{font-family:Display;font-weight:400;font-size:74px;line-height:1;letter-spacing:-.01em;margin-top:16px}
+h1 em{font-style:normal;color:var(--dim)}
+.foot{position:absolute;right:86px;top:700px;width:320px;font-size:17px;line-height:1.5;color:var(--dim)}
+.foot b{color:var(--ink);font-weight:500}
+</style></head><body>
+<div class="menubar">
+  <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 6.5a9 9 0 0 1 12 0M4.3 9a5.6 5.6 0 0 1 7.4 0M6.6 11.5a2.2 2.2 0 0 1 2.8 0"/></svg>
+  <svg class="ico" viewBox="0 0 22 12" style="width:24px" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y=".5" width="18" height="11" rx="3"/><rect x="2.5" y="2.5" width="11" height="7" rx="1.5" fill="currentColor"/><path d="M20.5 4v4" stroke-width="1.5"/></svg>
+  <span class="tv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1.5"/><path d="M5 13.5h6"/></svg></span>
+  <span>Fri 30 Oct&nbsp;&nbsp;6:56 pm</span>
+</div>
+
+<div class="copy">
+  <div class="brand"><i></i>Blacklevel</div>
+  <h1>Take your Sony TV back. <em>It's just a TV.</em></h1>
+</div>
+
+<div class="tv-wrap">
+  <div class="screen"><img src="home-apps.png"></div>
+  <div class="stand"></div>
+</div>
+
+<div class="remote"><img src="remote-menu.png"></div>
+
+<div class="foot"><b>A quiet home screen</b> for BRAVIA Google TV, and <b>a Mac menu bar remote.</b> No ads, no accounts, no cloud.</div>
+</body></html>

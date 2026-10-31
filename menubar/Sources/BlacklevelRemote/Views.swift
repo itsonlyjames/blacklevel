@@ -136,6 +136,17 @@ struct MenuView: View {
         }
         .padding(16)
         .frame(width: 320)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(GeometryReader { proxy in
+            Color.clear.preference(key: MenuHeightKey.self, value: proxy.size.height)
+        })
+        .onPreferenceChange(MenuHeightKey.self) { height in
+            let rounded = height.rounded(.up)
+            if abs(rounded - menuHeight) >= 1 { menuHeight = rounded }
+        }
+        .background(WindowSizer(size: CGSize(width: 320, height: menuHeight)))
+        // Top-aligned and filled, so a window that's briefly the wrong size shows dark, not a white band.
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.bg)
         .foregroundStyle(Theme.ink)
         .tint(Theme.accent)
@@ -145,6 +156,7 @@ struct MenuView: View {
     }
 
     @State private var contentHeight: CGFloat = 0
+    @State private var menuHeight: CGFloat = 0
     /// Leaves room for the menu bar, header and footer; read when the menu opens, not on every render.
     @State private var maxScrollHeight: CGFloat = max((NSScreen.main?.visibleFrame.height ?? 800) - 200, 300)
 
@@ -219,6 +231,63 @@ struct MenuView: View {
 private struct ContentHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct MenuHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// MenuBarExtra's window grows with its content but doesn't reliably shrink (notably when the content changed
+/// while the menu was closed, e.g. the TV went to standby), leaving a tall panel with the menu floating in it.
+/// This pins the window to the menu's own size, keeping its top edge under the menu bar, and re-applies it
+/// whenever the window opens or something else resizes it.
+private struct WindowSizer: NSViewRepresentable {
+    let size: CGSize
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.view = view
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.size = size
+        DispatchQueue.main.async { context.coordinator.attach() }
+    }
+
+    @MainActor
+    final class Coordinator {
+        weak var view: NSView?
+        var size: CGSize = .zero { didSet { apply() } }
+        private weak var window: NSWindow?
+        private var observers: [NSObjectProtocol] = []
+
+        func attach() {
+            guard let window = view?.window, window !== self.window else { return apply() }
+            observers.forEach(NotificationCenter.default.removeObserver)
+            self.window = window
+            observers = [NSWindow.didBecomeKeyNotification, NSWindow.didResizeNotification].map { name in
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.apply() }
+                }
+            }
+            apply()
+        }
+
+        private func apply() {
+            guard let window, size.height > 0 else { return }
+            let target = window.frameRect(forContentRect: NSRect(origin: .zero, size: size)).size
+            let frame = window.frame
+            guard abs(frame.height - target.height) >= 1 || abs(frame.width - target.width) >= 1 else { return }
+            window.setFrame(NSRect(x: frame.minX, y: frame.maxY - target.height, width: target.width, height: target.height),
+                            display: true)
+        }
+
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+    }
 }
 
 // MARK: - Volume

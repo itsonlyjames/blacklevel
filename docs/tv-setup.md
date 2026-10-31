@@ -24,7 +24,7 @@ The key travels in plain HTTP on your local network. That's how Sony's API works
 Installing the home screen uses `adb` over the network.
 
 1. **Settings → System → About**, then select **Android TV OS build** seven times until it says you're a developer.
-2. **Settings → System → Developer options**: turn on **USB debugging** (on Sony models this also enables network ADB).
+2. **Settings → System → Developer options**: turn on **ADB debugging** (**USB debugging** on some models). Sony has no separate network option: this one switch also turns on ADB over the network.
 3. On your Mac: `brew install android-platform-tools`, then:
 
    ```bash
@@ -35,4 +35,4 @@ Installing the home screen uses `adb` over the network.
 
 With `adb` installed, Blacklevel Remote can also send remote keys and take screenshots over ADB when no pre-shared key is set.
 
-To undo: turn off **Developer options** (this also turns off debugging).
+To undo: turn off **ADB debugging**, or all of **Developer options**. Blacklevel Home updates itself from 1.2.0 on, so you only need it again for testing, a factory reset, or if an update leaves the home screen blank. Without it, the remote's screenshot button stops working on TVs like the A80J, whose screenshot API doesn't answer.

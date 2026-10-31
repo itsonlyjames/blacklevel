@@ -97,7 +97,7 @@ enum Discovery {
     }
 }
 
-/// Fallback remote keys over ADB, for when no PSK is set but USB debugging is on.
+/// Fallback remote keys over ADB, for when no PSK is set but ADB debugging is on.
 enum ADB {
     static let path: String? = ["/opt/homebrew/bin/adb", "/usr/local/bin/adb"]
         .first { FileManager.default.isExecutableFile(atPath: $0) }

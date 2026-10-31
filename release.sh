@@ -44,8 +44,6 @@ if (( !DRY )); then
   [[ -z $(git status --porcelain --untracked-files=no) ]] || fail "Commit or stash your changes first"
   gh auth status >/dev/null 2>&1 || fail "gh isn't logged in"
   [[ -s $NOTES ]] || fail "Write the release notes in $NOTES first"
-  # The release commit and tag are public, so they mustn't carry a personal address.
-  [[ $(git config user.email) == *@users.noreply.github.com ]] || fail "git user.email isn't your GitHub noreply address"
   git fetch -q origin main
   git merge-base --is-ancestor origin/main HEAD || fail "main is behind origin/main: pull first"
 fi

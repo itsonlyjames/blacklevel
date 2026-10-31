@@ -25,8 +25,12 @@ class HomeActivity : Activity() {
         web = WebView(this).apply {
             setBackgroundColor(0xFF0D0B09.toInt())
             settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true // remembers most-recently-opened apps
+            settings.domStorageEnabled = true // remembers most-recently-opened apps and the page's settings
             settings.allowFileAccess = true
+            // the page never scrolls; without this a scrollbar flashes while the viewport settles on load
+            isVerticalScrollBarEnabled = false
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = WebView.OVER_SCROLL_NEVER
             // the page is laid out at 1920x1080; let the viewport meta size it to the screen
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
@@ -44,9 +48,12 @@ class HomeActivity : Activity() {
         web.evaluateJavascript("window.refresh && refresh()", null)
     }
 
-    // Home has nowhere to go back to.
-    override fun dispatchKeyEvent(e: KeyEvent): Boolean =
-        if (e.keyCode == KeyEvent.KEYCODE_BACK) true else super.dispatchKeyEvent(e)
+    // Home has nowhere to go back to; Back only closes the page's own panels.
+    override fun dispatchKeyEvent(e: KeyEvent): Boolean {
+        if (e.keyCode != KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(e)
+        if (e.action == KeyEvent.ACTION_UP) web.evaluateJavascript("window.back && back()", null)
+        return true
+    }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {}

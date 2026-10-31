@@ -15,6 +15,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Text;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{display:none}
 #stage{position:absolute;inset:0;transition:opacity 2.4s var(--ease),transform 6s linear}
 body.idle #stage{opacity:.32}
 
@@ -25,21 +26,37 @@ body.idle #stage{opacity:.32}
 /* apps: a dial, focused item anchored at the left edge */
 #apps{position:absolute;left:0;right:0;top:540px;height:220px;overflow:hidden}
 #track{position:absolute;left:128px;top:0;display:flex;align-items:baseline;gap:72px;white-space:nowrap;transition:transform .45s var(--ease)}
-.app{font-family:Display;font-size:100px;line-height:1.5;color:var(--dim);transition:color .3s,opacity .45s var(--ease)}
+.app{font-family:Display;font-size:var(--app-size,100px);line-height:1.5;color:var(--dim);transition:color .3s,opacity .45s var(--ease)}
 .app.past{opacity:0}
 .app.sel{color:var(--ink)}
 
 /* focus marker: an accent hairline grows under the selected thing */
-.app::after,.inp::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .4s var(--ease),opacity .2s}
+.app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .4s var(--ease),opacity .2s}
 .app::after{margin-top:-14px}
 .inp::after{margin-top:12px}
-.app.sel::after,.inp.sel::after{transform:scaleX(1);opacity:1}
+.opt .val::after{margin-top:10px}
+.app.sel::after,.inp.sel::after,.opt.sel .val::after{transform:scaleX(1);opacity:1}
 
 #inputs{position:absolute;left:128px;right:128px;bottom:150px;display:flex;align-items:baseline;gap:64px}
 .inp{font-size:40px;font-weight:500;color:var(--dim);transition:color .3s}
 .inp small{font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:14px}
 .inp.sel{color:var(--ink)}
 .inp.settings{margin-left:auto}
+
+/* customise panel: covers the stage, same type, same focus hairline */
+#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .35s var(--ease),visibility 0s .35s}
+body.panel #panel{opacity:1;visibility:visible;transition:opacity .35s var(--ease)}
+body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
+#panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:72px}
+.opt{display:flex;align-items:baseline;font-size:40px;font-weight:500;color:var(--dim);margin-bottom:44px;transition:color .3s}
+.opt .lbl{width:560px}
+.opt .val{display:inline-block}
+.opt .arr{color:var(--faint);opacity:0;transition:opacity .2s}
+.opt .arr.l{margin-right:28px}
+.opt .arr.r{margin-left:28px}
+.opt.sel{color:var(--ink)}
+.opt.sel .arr{opacity:1}
+#panel .hint{position:absolute;left:128px;bottom:150px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
 </style></head>
 <body>
 <div id="stage">
@@ -47,6 +64,7 @@ body.idle #stage{opacity:.32}
   <div id="apps"><div id="track"></div></div>
   <div id="inputs"></div>
 </div>
+<div id="panel"><h2>Customise</h2><div id="opts"></div><div class="hint">◀ ▶ change &nbsp;·&nbsp; Back to close</div></div>
 <script>
 const B = window.Launcher || {
   apps:()=>JSON.stringify(["Netflix","YouTube","Plex","Spotify","Kayo","Binge","ABC iview","SBS On Demand","9Now","10play","7plus","Optus Sport","Prime Video"].map(l=>({pkg:l,label:l}))),
@@ -58,14 +76,27 @@ const B = window.Launcher || {
 const mru = (()=>{try{return JSON.parse(localStorage.mru||"[]")}catch(e){return[]}})();
 const rank = p => { const i = mru.indexOf(p); return i < 0 ? 1e3 : i };
 let apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg));
-let inputs = JSON.parse(B.inputs()).concat([{id:"__settings",label:"Settings"}]);
+const extras = [{id:"__customise",label:"Customise"},{id:"__settings",label:"Settings"}];
+let inputs = JSON.parse(B.inputs()).concat(extras);
+
+// launcher settings, remembered locally; each option's first choice is the default
+const OPTS = [
+  {key:"names", label:"App names", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
+  {key:"size", label:"App name size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
+  {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
+  {key:"dim", label:"Dim when idle", choices:[[1,"After 1 minute"],[5,"After 5 minutes"],[15,"After 15 minutes"]]},
+];
+const prefs = (()=>{try{return JSON.parse(localStorage.prefs||"{}")}catch(e){return{}}})();
+const pref = k => { const o = OPTS.find(o=>o.key===k); return o.choices.some(c=>c[0]===prefs[k]) ? prefs[k] : o.choices[0][0]; };
+const short = l => pref('names')==='full' || l.length <= pref('names') ? l : l.slice(0, pref('names')).trimEnd()+'…';
+function applyPrefs(){ document.documentElement.style.setProperty('--app-size', pref('size')+'px'); tick(); }
 
 const track = document.getElementById('track'), inRow = document.getElementById('inputs');
-let row = 0, ai = 0, ii = 0;
+let row = 0, ai = 0, ii = 0, pi = 0, open = false;
 
 function build(){
-  track.innerHTML = apps.map(a=>`<div class="app">${a.label}</div>`).join('');
-  inRow.innerHTML = inputs.map(x=>`<div class="inp${x.id==='__settings'?' settings':''}">${x.label}${x.sub?`<small>${x.sub}</small>`:''}</div>`).join('');
+  track.innerHTML = apps.map(a=>`<div class="app">${short(a.label)}</div>`).join('');
+  inRow.innerHTML = inputs.map(x=>`<div class="inp${x.id==='__customise'?' settings':''}">${x.label}${x.sub?`<small>${x.sub}</small>`:''}</div>`).join('');
 }
 function render(){
   const els = track.children;
@@ -75,11 +106,37 @@ function render(){
 }
 function activate(){
   if(row===0){ const p = apps[ai].pkg; const m = mru.filter(x=>x!==p); m.unshift(p); try{localStorage.mru=JSON.stringify(m)}catch(e){} B.launch(p); }
-  else { const x = inputs[ii]; x.id==='__settings' ? B.settings() : B.input(x.id); }
+  else { const x = inputs[ii]; x.id==='__customise' ? showPanel(true) : x.id==='__settings' ? B.settings() : B.input(x.id); }
 }
+
+const optsEl = document.getElementById('opts');
+function renderPanel(){
+  optsEl.innerHTML = OPTS.map((o,i)=>`<div class="opt${i===pi?' sel':''}"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`).join('');
+}
+function showPanel(on){ open = on; pi = 0; document.body.classList.toggle('panel', on); if(on) renderPanel(); }
+function cycle(d){
+  const o = OPTS[pi], i = o.choices.findIndex(c=>c[0]===pref(o.key));
+  prefs[o.key] = o.choices[(i+d+o.choices.length)%o.choices.length][0];
+  try{localStorage.prefs=JSON.stringify(prefs)}catch(e){}
+  applyPrefs(); build(); render(); renderPanel(); wake();
+}
+function panelKey(k){
+  switch(k){
+    case 'ArrowUp': pi=Math.max(0,pi-1); break;
+    case 'ArrowDown': pi=Math.min(OPTS.length-1,pi+1); break;
+    case 'ArrowLeft': cycle(-1); return true;
+    case 'ArrowRight': case 'Enter': cycle(1); return true;
+    case 'Escape': showPanel(false); return true;
+    default: return false;
+  }
+  renderPanel(); return true;
+}
+// called by the app on the remote's Back button
+window.back = () => { if(open) showPanel(false); };
 
 document.addEventListener('keydown',e=>{
   wake();
+  if(open){ if(panelKey(e.key)) e.preventDefault(); return; }
   switch(e.key){
     case 'ArrowLeft': row===0 ? ai=Math.max(0,ai-1) : ii=Math.max(0,ii-1); break;
     case 'ArrowRight': row===0 ? ai=Math.min(apps.length-1,ai+1) : ii=Math.min(inputs.length-1,ii+1); break;
@@ -94,21 +151,24 @@ document.addEventListener('keydown',e=>{
 // clock
 function tick(){
   const d = new Date();
-  document.getElementById('time').textContent = d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}).replace(/\s?[ap]m/i,'');
+  document.getElementById('time').textContent = pref('clock')==='24'
+    ? d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'})
+    : d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}).replace(/\s?[ap]m/i,'');
   document.getElementById('date').textContent = d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
 }
 tick(); setInterval(tick, 5000);
 
 // OLED care: dim after a minute idle, and drift the whole stage a few px every minute
 let idleT; const stage = document.getElementById('stage');
-function wake(){ document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(()=>document.body.classList.add('idle'), 60000); }
+function wake(){ document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(()=>document.body.classList.add('idle'), pref('dim')*60000); }
 setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*16-8)}px,${Math.round(Math.random()*16-8)}px)`; }, 60000);
 
 // called by the app when HDMI device names arrive (they load in the background)
-window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat([{id:"__settings",label:"Settings"}]); ii = Math.min(ii, inputs.length-1); build(); render(); };
+window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras); ii = Math.min(ii, inputs.length-1); build(); render(); };
 
 // called by the app when it returns to the foreground
-window.refresh = () => { apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg)); build(); ai=0; ii=0; row=0; render(); wake(); };
+window.refresh = () => { apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg)); build(); ai=0; ii=0; row=0; showPanel(false); render(); wake(); };
+applyPrefs();
 document.fonts.ready.then(()=>{ build(); render(); wake(); });
 </script>
 </body></html>

@@ -330,19 +330,15 @@ struct VolumeRow: View {
 // MARK: - Apps
 
 /// A search field instead of the full list: the TV reports 40-odd apps, most of them Sony extras.
-/// With no query it shows the last few apps opened from here; Return opens the first match.
+/// Return opens the first match.
 struct AppSearch: View {
     @EnvironmentObject var store: TVStore
     @State private var query = ""
-    @AppStorage("recentApps") private var recentURIs = ""
-
-    private var recents: [TVApp] {
-        recentURIs.split(separator: "\n").compactMap { uri in store.apps.first { $0.uri == uri } }
-    }
+    @FocusState private var searchFocused: Bool
 
     private var results: [TVApp] {
         let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return recents }
+        guard !q.isEmpty else { return [] }
         let matches = store.apps.filter { $0.title.localizedCaseInsensitiveContains(q) }
         // Names that start with the query first ("pl" → Plex before Google Play).
         return matches.filter { $0.title.lowercased().hasPrefix(q.lowercased()) }
@@ -357,6 +353,7 @@ struct AppSearch: View {
                 TextField("Search \(store.apps.count) apps", text: $query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($searchFocused)
                     .onSubmit { if let first = results.first { open(first) } }
                 if !query.isEmpty {
                     Button { query = "" } label: { Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)) }
@@ -387,8 +384,7 @@ struct AppSearch: View {
     private func open(_ app: TVApp) {
         store.launch(app)
         query = ""
-        let others = recentURIs.split(separator: "\n").map(String.init).filter { $0 != app.uri }
-        recentURIs = ([app.uri] + others).prefix(4).joined(separator: "\n")
+        searchFocused = false
     }
 }
 

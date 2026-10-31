@@ -459,16 +459,15 @@ struct RemotePad: View {
                 }
             }
         } label: {
-            // Fill the whole tile, so the click target is the 40×40 square and not just the glyph.
             Image(systemName: "ellipsis")
+                .font(.system(size: 12, weight: .medium))
                 .frame(width: size, height: size)
-                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        // A button-style menu draws its label as given, like the other tiles; .borderlessButton hosts it
+        // in an AppKit pop-up button that ignores the frame and pushes the glyph off centre.
+        .menuStyle(.button)
+        .buttonStyle(TileStyle())
         .menuIndicator(.hidden)
-        .tint(Theme.ink)
-        .frame(width: size, height: size)
-        .background(Theme.tile)
         .help("All remote keys")
     }
 }

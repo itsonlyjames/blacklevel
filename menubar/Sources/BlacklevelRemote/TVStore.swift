@@ -365,13 +365,29 @@ final class TVStore: ObservableObject {
     private func loadSources() async -> Bool {
         guard let rows = try? await client.call("avContent", "getCurrentExternalInputsStatus").first as? [[String: Any]],
               !rows.isEmpty else { return false }
+        // The TV lists a CEC device ("SHIELD") and the HDMI port it's on ("PC") as two inputs. Keep one
+        // tile per port: the HDMI entry, named by the user's label, else the device, else the port title.
+        let cecNames = Dictionary(rows.compactMap { row -> (String, String)? in
+            guard let uri = row["uri"] as? String, uri.hasPrefix("extInput:cec"), let port = Self.port(of: uri),
+                  let title = row["title"] as? String, !title.isEmpty else { return nil }
+            return (port, title)
+        }, uniquingKeysWith: { first, _ in first })
+        let hdmiPorts = Set(rows.compactMap { ($0["uri"] as? String).flatMap { $0.hasPrefix("extInput:hdmi") ? Self.port(of: $0) : nil } })
         set(\.sources, rows.compactMap { row in
             guard let uri = row["uri"] as? String else { return nil }
+            let port = Self.port(of: uri)
+            if uri.hasPrefix("extInput:cec"), let port, hdmiPorts.contains(port) { return nil }
             let label = (row["label"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            return Source(uri: uri, title: (label ?? row["title"] as? String ?? uri).htmlDecoded,
+            let device = uri.hasPrefix("extInput:hdmi") ? port.flatMap { cecNames[$0] } : nil
+            return Source(uri: uri, title: (label ?? device ?? row["title"] as? String ?? uri).htmlDecoded,
                           connected: row["connection"] as? Bool ?? true)
         })
         return true
+    }
+
+    /// "extInput:cec?type=player&port=4&logicalAddr=b" -> "4"
+    private static func port(of uri: String) -> String? {
+        URLComponents(string: uri)?.queryItems?.first { $0.name == "port" }?.value
     }
 
     private func loadApps() async {

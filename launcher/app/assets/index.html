@@ -14,7 +14,7 @@
   --ease:cubic-bezier(.22,1,.36,1);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Text;-webkit-font-smoothing:antialiased}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Text;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
 ::-webkit-scrollbar{display:none}
 #stage{position:absolute;inset:0;transition:opacity 2.4s var(--ease),transform 6s linear}
 body.idle #stage{opacity:.32}
@@ -29,6 +29,7 @@ body.idle #stage{opacity:.32}
 .app{font-family:Display;font-size:var(--app-size,100px);line-height:1.5;color:var(--dim);transition:color .3s,opacity .45s var(--ease)}
 .app.past{opacity:0}
 .app.sel{color:var(--ink)}
+.app.moving{color:var(--accent)}
 
 /* focus marker: an accent hairline grows under the selected thing */
 .app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .4s var(--ease),opacity .2s}
@@ -37,11 +38,16 @@ body.idle #stage{opacity:.32}
 .opt .val::after{margin-top:10px}
 .app.sel::after,.inp.sel::after,.opt.sel .val::after{transform:scaleX(1);opacity:1}
 
-#inputs{position:absolute;left:128px;right:128px;bottom:150px;display:flex;align-items:baseline;gap:64px}
+#inputs{position:absolute;left:128px;right:128px;bottom:150px;display:flex;align-items:baseline;gap:64px;transition:opacity .3s var(--ease)}
 .inp{font-size:40px;font-weight:500;color:var(--dim);transition:color .3s}
 .inp small{font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:14px}
 .inp.sel{color:var(--ink)}
 .inp.settings{margin-left:auto}
+
+/* moving an app: the inputs make way for a hint in the same place */
+#movehint{position:absolute;left:128px;bottom:150px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);opacity:0;transition:opacity .3s var(--ease)}
+body.moving #inputs{opacity:0}
+body.moving #movehint{opacity:1}
 
 /* vertical layout: clock and inputs down the left, apps in one column on the right.
    The column starts level with the clock and runs to the bottom of the screen, fading out; names keep the horizontal size. */
@@ -77,8 +83,9 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
   <div class="clock"><div class="time" id="time"></div><div class="date" id="date"></div></div>
   <div id="apps"><div id="track"></div></div>
   <div id="inputs"></div>
+  <div id="movehint"></div>
 </div>
-<div id="panel"><h2>Customise</h2><div id="opts"></div><div class="hint">◀ ▶ change &nbsp;·&nbsp; Back to close</div></div>
+<div id="panel"><h2>Customise</h2><div id="opts"></div><div class="hint">◀ ▶ change &nbsp;·&nbsp; Back to close &nbsp;·&nbsp; Hold OK on an app to move it</div></div>
 <script>
 const B = window.Launcher || {
   apps:()=>JSON.stringify(["Netflix","YouTube","Plex","Spotify","Kayo","Binge","ABC iview","SBS On Demand","9Now","10play","7plus","Optus Sport","Prime Video"].map(l=>({pkg:l,label:l}))),
@@ -86,22 +93,18 @@ const B = window.Launcher || {
   launch:p=>console.log("launch",p), input:i=>console.log("input",i), settings:()=>console.log("settings")
 };
 
-// most recently opened first, remembered locally
-const mru = (()=>{try{return JSON.parse(localStorage.mru||"[]")}catch(e){return[]}})();
-const rank = p => { const i = mru.indexOf(p); return i < 0 ? 1e3 : i };
-let apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg));
-const extras = [{id:"__customise",label:"Customise"},{id:"__settings",label:"Settings"}];
-let inputs = JSON.parse(B.inputs()).concat(extras);
-
 // launcher settings, remembered locally; each option's first choice is the default
 const OPTS = [
   {key:"layout", label:"Layout", choices:[["horizontal","Horizontal"],["vertical","Vertical"]]},
+  {key:"order", label:"App order", choices:[["recent","Recently opened"],["custom","Your order"]]},
   {key:"names", label:"App names", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
   {key:"size", label:"App name size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
   {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
   {key:"dim", label:"Dim when idle", choices:[[1,"After 1 minute"],[5,"After 5 minutes"],[15,"After 15 minutes"]]},
 ];
-const prefs = (()=>{try{return JSON.parse(localStorage.prefs||"{}")}catch(e){return{}}})();
+const load = (k, d) => { try{return JSON.parse(localStorage[k]) ?? d}catch(e){return d} };
+const save = (k, v) => { try{localStorage[k]=JSON.stringify(v)}catch(e){} };
+const prefs = load('prefs', {});
 const pref = k => { const o = OPTS.find(o=>o.key===k); return o.choices.some(c=>c[0]===prefs[k]) ? prefs[k] : o.choices[0][0]; };
 const short = l => pref('names')==='full' || l.length <= pref('names') ? l : l.slice(0, pref('names')).trimEnd()+'…';
 function applyPrefs(){
@@ -110,9 +113,21 @@ function applyPrefs(){
   tick();
 }
 
+// app order: most recently opened first, or the order you set by holding OK on an app.
+// Apps in neither list keep the bridge's order, after the rest.
+let mru = load('mru', []), custom = load('order', []);
+function arrange(list){
+  const o = pref('order')==='custom' ? custom : mru;
+  const rank = p => { const i = o.indexOf(p); return i < 0 ? 1e3 : i };
+  return list.slice().sort((a,b)=>rank(a.pkg)-rank(b.pkg));
+}
+let apps = arrange(JSON.parse(B.apps()));
+const extras = [{id:"__customise",label:"Customise"},{id:"__settings",label:"Settings"}];
+let inputs = JSON.parse(B.inputs()).concat(extras);
+
 const track = document.getElementById('track'), inRow = document.getElementById('inputs');
 const appsEl = document.getElementById('apps');
-let row = 0, ai = 0, ii = 0, pi = 0, open = false, scroll = 0;
+let row = 0, ai = 0, ii = 0, pi = 0, open = false, scroll = 0, hold = null, moving = null;
 
 function build(){
   track.innerHTML = apps.map(a=>`<div class="app">${short(a.label)}</div>`).join('');
@@ -120,7 +135,7 @@ function build(){
 }
 function render(){
   const els = track.children;
-  [...els].forEach((e,i)=>{e.classList.toggle('sel',row===0&&i===ai);e.classList.toggle('past',i<ai)});
+  [...els].forEach((e,i)=>{e.classList.toggle('sel',row===0&&i===ai);e.classList.toggle('moving',!!moving&&i===ai);e.classList.toggle('past',i<ai)});
   if(pref('layout')==='vertical'){
     // scroll only as far as needed to keep the selected app inside the page margin (the inputs' 150px);
     // the next one peeks out into the margin and fades off the bottom of the screen
@@ -134,8 +149,27 @@ function render(){
   [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
 }
 function activate(){
-  if(row===0){ const p = apps[ai].pkg; const m = mru.filter(x=>x!==p); m.unshift(p); try{localStorage.mru=JSON.stringify(m)}catch(e){} B.launch(p); }
+  if(row===0){ const p = apps[ai].pkg; mru = [p, ...mru.filter(x=>x!==p)]; save('mru', mru); B.launch(p); }
   else { const x = inputs[ii]; x.id==='__customise' ? showPanel(true) : x.id==='__settings' ? B.settings() : B.input(x.id); }
+}
+
+// moving an app: ◀ ▶ swap it with its neighbour, OK keeps the new order, Back puts it back
+const hintEl = document.getElementById('movehint');
+function startMove(){
+  moving = {ai, apps:apps.slice()};
+  hintEl.innerHTML = `${pref('layout')==='vertical'?'▲ ▼':'◀ ▶'} move &nbsp;·&nbsp; OK to place &nbsp;·&nbsp; Back to cancel`;
+  document.body.classList.add('moving'); render();
+}
+function endMove(keep){
+  if(keep){ custom = apps.map(a=>a.pkg); save('order', custom); prefs.order = 'custom'; save('prefs', prefs); }
+  else { apps = moving.apps; ai = moving.ai; build(); }
+  moving = null; document.body.classList.remove('moving'); render();
+}
+function moveKey(k){
+  const j = ai + (k==='ArrowLeft' ? -1 : k==='ArrowRight' ? 1 : 0);
+  if(j!==ai && j>=0 && j<apps.length){ [apps[ai],apps[j]] = [apps[j],apps[ai]]; ai = j; build(); render(); }
+  else if(k==='Enter' && !hold) endMove(true); // not the key-repeat of the hold that started the move
+  else if(k==='Escape') endMove(false);
 }
 
 const optsEl = document.getElementById('opts');
@@ -146,8 +180,8 @@ function showPanel(on){ open = on; pi = 0; document.body.classList.toggle('panel
 function cycle(d){
   const o = OPTS[pi], i = o.choices.findIndex(c=>c[0]===pref(o.key));
   prefs[o.key] = o.choices[(i+d+o.choices.length)%o.choices.length][0];
-  try{localStorage.prefs=JSON.stringify(prefs)}catch(e){}
-  applyPrefs(); build(); render(); renderPanel(); wake();
+  save('prefs', prefs);
+  applyPrefs(); apps = arrange(apps); build(); render(); renderPanel(); wake();
 }
 function panelKey(k){
   switch(k){
@@ -161,23 +195,32 @@ function panelKey(k){
   renderPanel(); return true;
 }
 // called by the app on the remote's Back button
-window.back = () => { if(open) showPanel(false); };
+window.back = () => { if(moving) endMove(false); else if(open) showPanel(false); };
 
 document.addEventListener('keydown',e=>{
   wake();
+  if(e.key!=='Enter'){ clearTimeout(hold); hold = null; }
+  else if(e.repeat && !moving){ e.preventDefault(); return; }
   if(open){ if(panelKey(e.key)) e.preventDefault(); return; }
   // the vertical layout turns the remote a quarter: ▲ ▼ along a column, ◀ ▶ between them
   const v = pref('layout')==='vertical';
   const key = !v ? e.key : {ArrowUp:'ArrowLeft',ArrowDown:'ArrowRight',ArrowLeft:'ArrowDown',ArrowRight:'ArrowUp'}[e.key] || e.key;
+  if(moving){ moveKey(key); e.preventDefault(); return; }
   switch(key){
     case 'ArrowLeft': row===0 ? ai=Math.max(0,ai-1) : ii=Math.max(0,ii-1); break;
     case 'ArrowRight': row===0 ? ai=Math.min(apps.length-1,ai+1) : ii=Math.min(inputs.length-1,ii+1); break;
     case 'ArrowDown': row=1; break;
     case 'ArrowUp': row=0; break;
-    case 'Enter': activate(); break;
+    // apps open on release, so holding OK can pick one up to move instead
+    case 'Enter': row===0 ? hold = hold || setTimeout(startMove, 600) : activate(); break;
     default: return;
   }
   e.preventDefault(); render();
+});
+document.addEventListener('keyup',e=>{
+  if(e.key!=='Enter' || !hold) return;
+  clearTimeout(hold); hold = null;
+  if(!moving) activate();
 });
 
 // clock
@@ -199,7 +242,10 @@ setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*
 window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras); ii = Math.min(ii, inputs.length-1); build(); render(); };
 
 // called by the app when it returns to the foreground
-window.refresh = () => { apps = JSON.parse(B.apps()).sort((a,b)=>rank(a.pkg)-rank(b.pkg)); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake(); };
+window.refresh = () => {
+  clearTimeout(hold); hold = null; moving = null; document.body.classList.remove('moving');
+  apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); render(); wake();
+};
 applyPrefs();
 document.fonts.ready.then(()=>{ build(); render(); wake(); });
 </script>

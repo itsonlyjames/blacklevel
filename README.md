@@ -40,7 +40,6 @@ Ideas, not promises. The rule stays the same: local network only, no accounts, n
 Next up:
 
 - **Signed and notarised remote**: sign Blacklevel Remote with a Developer ID and notarise it, so macOS opens it without the right-click workaround.
-- **Re-order apps on the home screen**: choose the order of the apps row on Blacklevel Home, instead of it following recent use.
 
 Later:
 

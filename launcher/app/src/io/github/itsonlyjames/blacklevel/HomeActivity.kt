@@ -35,6 +35,8 @@ class HomeActivity : Activity() {
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
             isFocusable = true
+            // holding OK picks up an app to move; keep the WebView's own long-press (text selection) out of it
+            setOnLongClickListener { true }
             addJavascriptInterface(Bridge(), "Launcher")
             loadUrl("file:///android_asset/index.html")
         }

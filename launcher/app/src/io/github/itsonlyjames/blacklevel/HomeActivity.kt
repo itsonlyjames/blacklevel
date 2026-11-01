@@ -4,13 +4,19 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.media.tv.TvContract
 import android.media.tv.TvInputInfo
 import android.media.tv.TvInputManager
@@ -19,6 +25,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Base64
 import android.view.KeyEvent
@@ -107,6 +114,109 @@ class HomeActivity : Activity() {
         super.onResume()
         // installs/uninstalls and focus reset when coming back home
         web.evaluateJavascript("window.refresh && refresh()", null)
+        watchSessions()
+    }
+
+    override fun onPause() {
+        unwatchSessions()
+        super.onPause()
+    }
+
+    // Now playing: whichever app has a media session (Spotify, Plex, YouTube…), while Home is on screen.
+    // Without the listener enabled, getActiveSessions throws and the page shows nothing.
+    private val sessions by lazy { getSystemService(MediaSessionManager::class.java) }
+    private val listener by lazy { ComponentName(this, NowPlayingListener::class.java) }
+    private var controllers = listOf<MediaController>()
+    @Volatile private var playing = "null"
+    private val sessionChanged = object : MediaController.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackState?) = pushPlaying()
+        override fun onMetadataChanged(metadata: MediaMetadata?) = pushPlaying()
+        override fun onSessionDestroyed() = pushPlaying()
+    }
+    private val sessionsChanged = MediaSessionManager.OnActiveSessionsChangedListener { watch(it ?: emptyList()) }
+
+    private fun watchSessions() {
+        try {
+            sessions.addOnActiveSessionsChangedListener(sessionsChanged, listener, handler)
+            watch(sessions.getActiveSessions(listener))
+        } catch (e: SecurityException) { watch(emptyList()) }
+    }
+
+    private fun unwatchSessions() {
+        try { sessions.removeOnActiveSessionsChangedListener(sessionsChanged) } catch (e: Exception) {}
+        controllers.forEach { it.unregisterCallback(sessionChanged) }
+        controllers = emptyList()
+    }
+
+    // coming home always resends, so the page's progress line restarts from the true position
+    private fun watch(list: List<MediaController>) {
+        controllers.forEach { it.unregisterCallback(sessionChanged) }
+        controllers = list
+        list.forEach { it.registerCallback(sessionChanged, handler) }
+        pushPlaying(force = true)
+    }
+
+    // The playing session, else a paused one; a stopped session (Spotify keeps one after you leave it) shows nothing.
+    private fun pushPlaying(force: Boolean = false) {
+        val live = controllers.filter { c ->
+            c.playbackState?.state in SHOWING && c.metadata?.let { title(it) }?.isNotBlank() == true
+        }
+        val c = live.firstOrNull { it.playbackState?.state != PlaybackState.STATE_PAUSED } ?: live.firstOrNull()
+        val next = c?.let { nowPlaying(it).toString() } ?: "null"
+        if (next == playing && !force) return
+        playing = next
+        web.evaluateJavascript("window.nowPlaying && nowPlaying($next)", null)
+    }
+
+    private fun title(m: MediaMetadata) =
+        (m.getString(MediaMetadata.METADATA_KEY_TITLE) ?: m.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE) ?: m.description?.title?.toString())?.trim()
+
+    private fun nowPlaying(c: MediaController): JSONObject {
+        val m = c.metadata!!
+        val s = c.playbackState!!
+        val artist = listOf(MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_ALBUM_ARTIST, MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
+            .firstNotNullOfOrNull { k -> m.getString(k)?.trim()?.takeIf { it.isNotBlank() } } ?: m.description?.subtitle?.toString() ?: ""
+        val app = try { packageManager.getApplicationLabel(packageManager.getApplicationInfo(c.packageName, 0)).toString() } catch (e: Exception) { "" }
+        val out = JSONObject().put("title", title(m)).put("artist", artist).put("app", app)
+            .put("playing", s.state != PlaybackState.STATE_PAUSED).put("art", art(m))
+        // the position was true at lastPositionUpdateTime on the boot clock; the page counts on from wall-clock time
+        val duration = m.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        if (duration > 0 && s.position >= 0) out.put("duration", duration).put("position", s.position).put("speed", s.playbackSpeed)
+            .put("at", System.currentTimeMillis() - (SystemClock.elapsedRealtime() - s.lastPositionUpdateTime))
+        return out
+    }
+
+    // Album art as a small JPEG data URL, encoded once per picture. Art the app gives only as a web address
+    // is left out, so Home still makes no requests outside the network bar the update check.
+    // Spotify sends each new song several times over its first second, alternately with and without the
+    // cover; a song keeps the cover it was last sent with, so the page doesn't blink between them.
+    private var artFrom: Any? = null
+    private var artSong = ""
+    private var artUrl = ""
+    private fun art(m: MediaMetadata): String {
+        val song = "${title(m)}\u0000${m.getString(MediaMetadata.METADATA_KEY_ARTIST)}"
+        val bitmap = listOf(MediaMetadata.METADATA_KEY_ALBUM_ART, MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+            .firstNotNullOfOrNull { m.getBitmap(it) }?.takeUnless { it.isRecycled } ?: m.description?.iconBitmap
+        val uri = listOf(MediaMetadata.METADATA_KEY_ALBUM_ART_URI, MediaMetadata.METADATA_KEY_ART_URI, MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+            .firstNotNullOfOrNull { m.getString(it)?.takeIf { s -> s.isNotBlank() } } ?: m.description?.iconUri?.toString()
+        val from: Any? = bitmap ?: uri
+        if (from == null && song == artSong) return artUrl
+        // the same picture arrives as a new Bitmap with each update
+        val same = from === artFrom || (from is String && from == artFrom) ||
+            (from is Bitmap && (artFrom as? Bitmap)?.takeUnless { it.isRecycled }?.sameAs(from) == true)
+        artSong = song
+        if (same) return artUrl
+        artFrom = from
+        val picture = bitmap ?: uri?.takeIf { it.startsWith("content:") || it.startsWith("android.resource:") || it.startsWith("file:") }?.let {
+            try { contentResolver.openInputStream(Uri.parse(it))?.use { s -> BitmapFactory.decodeStream(s) } } catch (e: Exception) { null }
+        }
+        artUrl = picture?.let { p ->
+            val scale = minOf(1f, 320f / maxOf(p.width, p.height))
+            val small = if (scale < 1f) Bitmap.createScaledBitmap(p, (p.width * scale).toInt(), (p.height * scale).toInt(), true) else p
+            val jpeg = ByteArrayOutputStream().also { small.compress(Bitmap.CompressFormat.JPEG, 88, it) }
+            "data:image/jpeg;base64," + Base64.encodeToString(jpeg.toByteArray(), Base64.NO_WRAP)
+        } ?: ""
+        return artUrl
     }
 
     // Home has nowhere to go back to; Back only closes the page's own panels.
@@ -233,6 +343,10 @@ class HomeActivity : Activity() {
             runOnUiThread { web.evaluateJavascript("window.refreshInputs && refreshInputs()", null) }
         }.start()
 
+        /** What's playing, as last sent to nowPlaying(), or null; the page asks once as it loads. */
+        @JavascriptInterface
+        fun nowPlaying(): String = playing
+
         @JavascriptInterface
         fun launch(pkg: String) = runOnUiThread {
             packageManager.getLeanbackLaunchIntentForPackage(pkg)
@@ -334,5 +448,9 @@ class HomeActivity : Activity() {
     companion object {
         private const val RELEASES = "https://api.github.com/repos/itsonlyjames/blacklevel/releases/latest"
         private const val INSTALLED = "io.github.itsonlyjames.blacklevel.INSTALLED"
+        // skipping and connecting pass through on the way to the next song, so they count as playing
+        private val SHOWING = setOf(PlaybackState.STATE_PLAYING, PlaybackState.STATE_PAUSED, PlaybackState.STATE_BUFFERING,
+            PlaybackState.STATE_CONNECTING, PlaybackState.STATE_SKIPPING_TO_NEXT, PlaybackState.STATE_SKIPPING_TO_PREVIOUS,
+            PlaybackState.STATE_SKIPPING_TO_QUEUE_ITEM)
     }
 }

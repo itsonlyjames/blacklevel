@@ -8,6 +8,7 @@ A replacement home screen for Sony BRAVIA Google TV / Android TV. The time, one 
 - **Apps** come from the TV itself (every app with a TV launcher entry), minus the bundled Sony and Google extras (Play Store, Sony Select, the Vewd browser and so on). YouTube stays. By default the app you opened last moves to the front; hold OK on an app to pick it up, ◀ ▶ to move it, OK to place it (Back cancels). Placing one switches **Customise → Apps → Order** to *Your order*; switch it back to *Recently opened* any time.
 - **Names or icons**: **Customise → Apps → Show as** picks the row of app names or *Icons*, a close-set strip of each app's own icon with the focused app's name above it. **Customise → Icons** sets their **Shape** (square, rounded or circle; apps with an older-style icon keep their own) and whether the icons you're not on fade to grey (**Fade others**).
 - **Inputs** are the connected HDMI ports, named after the HDMI-CEC device on them ("SHIELD", "RX-V485") or the name you gave the port on the TV ("PC"). Device names come from the TV's own local Sony API, which needs no key. That API takes about a second to answer, so names are cached and the row updates when they change.
+- **Now playing**: whatever's playing in the background (Spotify, Plex, YouTube…) shows across from the clock: the cover, title, artist and a line that runs along with the song. Paused, it goes grey; stopped, it's gone. It reads the standard Android media session, which Android only shares with an app you've enabled as a notification listener, so it needs the `allow_listener` line in [Install](#install) once. Covers an app only gives as a web address are left out, so Home still makes no requests outside your network but the update check. Turn it off with **Customise → Screen → Now playing**.
 - **OLED care**: a dark, warm background; dims to ~30% after a minute idle; shifts everything a few pixels every minute.
 - **Remote**: ◀ ▶ move along a row, ▲ ▼ switch rows, OK opens, hold OK moves an app. In Customise, ▲ ▼ pick a section and ▶ goes into its settings, where ◀ ▶ change them. Back steps back out of Customise or cancels a move, and otherwise does nothing (you're already home).
 
@@ -33,6 +34,7 @@ adb connect <tv-ip>:5555
 adb install -r build/home.apk
 adb shell cmd package set-home-activity io.github.itsonlyjames.blacklevel/.HomeActivity
 adb shell appops set --user 0 io.github.itsonlyjames.blacklevel REQUEST_INSTALL_PACKAGES allow   # lets it update itself
+adb shell cmd notification allow_listener io.github.itsonlyjames.blacklevel/io.github.itsonlyjames.blacklevel.NowPlayingListener   # lets it see what's playing
 ```
 
 On a Sony A80J (Google TV, Android 12) that isn't enough by itself. `set-home-activity` and the HOME role both report success, but the Home button still opens Google TV's launcher. With that launcher disabled, Home goes to Google's setup app (`com.google.android.tungsten.setupwraith/.RecoveryActivity`), which shows nothing. adb isn't allowed to disable that one activity (`Shell cannot change component state`), so the whole setup app has to be disabled:

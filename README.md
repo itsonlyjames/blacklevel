@@ -31,6 +31,84 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
 
 Both parts are independent. Use either, or both.
 
+---
+
+## Prompt your agent
+
+Rather not do this by hand? Copy a prompt into a coding agent that can run commands on your Mac (Claude Code, Codex, Cursor and the like). Each one tells the agent to explain what it's about to do and wait for your go-ahead before it changes your TV.
+
+<details open>
+<summary><b>Install the Remote on my Mac</b></summary>
+
+```text
+Install Blacklevel Remote from https://github.com/itsonlyjames/blacklevel on this Mac.
+Read README.md and menubar/README.md first. Download the latest
+BlacklevelRemote-<version>-macOS.zip from the repo's GitHub Releases, check it against
+SHA256SUMS.txt from the same release, confirm the app is signed and notarised
+(spctl -a -vv), then move it to /Applications and open it. Then walk me through
+docs/tv-setup.md to turn on IP control and set a pre-shared key on the TV, and tell me
+what to enter in the app's Settings. Ask me for anything you can't find out yourself.
+```
+
+</details>
+
+<details>
+<summary><b>Install Home on my TV</b></summary>
+
+```text
+Install Blacklevel Home from https://github.com/itsonlyjames/blacklevel on my Sony TV.
+Read README.md, docs/tv-setup.md and launcher/README.md first. Help me turn on network
+debugging, connect with adb (install it with Homebrew if it's missing), download the
+latest BlacklevelHome-<version>.apk from GitHub Releases, check it against SHA256SUMS.txt,
+and install it with the commands in the Install section. Before you disable any
+Google TV packages, list each one, say what it does, show me how to undo it (the
+"Revert to the stock home screen" section) and wait for me to say yes.
+```
+
+</details>
+
+<details>
+<summary><b>Is it safe?</b></summary>
+
+```text
+Review https://github.com/itsonlyjames/blacklevel before I install it, and give me a
+plain-English verdict. Read the source, not just the README. Check: every network
+request each app makes and where it goes (the README says only a daily GitHub update
+check leaves the network); which Android permissions Home asks for and why; how the
+Remote stores the TV's pre-shared key; what the install steps change on the TV and
+whether launcher/README.md's revert steps undo all of it; and that the release
+downloads match SHA256SUMS.txt. Flag anything that doesn't match what the README
+claims.
+```
+
+</details>
+
+<details>
+<summary><b>Put my TV back to Google TV</b></summary>
+
+```text
+I installed Blacklevel Home (https://github.com/itsonlyjames/blacklevel) and want my
+Sony TV's stock home screen back. Read the "Revert to the stock home screen" section
+of launcher/README.md, connect to the TV with adb, show me the commands you'll run,
+run them once I agree, then check that pressing Home opens Google TV again.
+```
+
+</details>
+
+<details>
+<summary><b>Something isn't working</b></summary>
+
+```text
+Blacklevel (https://github.com/itsonlyjames/blacklevel) isn't working for me: <describe
+what happens>. Read docs/troubleshooting.md and the README for the part that's broken,
+work out the likely cause, and run only read-only checks (adb devices, the Remote's
+--selftest, and so on) until you've told me what you found and what you'd change.
+```
+
+</details>
+
+---
+
 ## Compatibility
 
 Developed and tested on a **Sony XR-65A80J** (2021, Google TV). It should work on other BRAVIA TVs that expose the BRAVIA REST API ("IP control"), which covers most Sony Android TV and Google TV models from 2015 onward. The remote reads the TV's supported methods, inputs, apps and remote keys at runtime, so it only shows what your TV can do.

@@ -105,7 +105,7 @@ if (( SCAN )) && [[ -x $HOOK ]]; then
   FILES=("$APP/Contents/MacOS/BlacklevelRemote" "$APP/Contents/Info.plist")
   [[ -s $NOTES ]] && FILES+=("$NOTES")
   while IFS= read -r f; do FILES+=("$f"); done < <(find "$UNPACKED" -type f ! -path '*/fonts/*')
-  "$HOOK" --files "${FILES[@]}" || { rm -rf "$UNPACKED"; fail "Private details found (rerun with --no-scan if they're fine)"; }
+  "$HOOK" --files "${FILES[@]}" || { rm -rf "$UNPACKED"; fail "Private details found (if they're fine, approve them with .git/hooks/pre-push --review and run again)"; }
   rm -rf "$UNPACKED"
 fi
 

@@ -19,6 +19,10 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:
 /* dims gently over 4s, wakes in half a second on any key; the drift eases rather than lurching */
 #stage{position:absolute;inset:0;transition:opacity .5s var(--ease),transform 8s ease-in-out}
 body.idle #stage{opacity:.32;transition:opacity 4s ease-in-out,transform 8s ease-in-out}
+/* atmosphere: two layers of light that cross over when focus moves, so only opacity animates.
+   They overhang the screen so the burn-in drift never shows an edge. */
+.light{position:absolute;inset:-24px;opacity:0;transition:opacity .6s var(--ease);will-change:opacity}
+.light.on{opacity:var(--glow,.4)}
 
 .clock{position:absolute;left:128px;top:96px}
 .time{font-family:Display;font-size:184px;line-height:.9;letter-spacing:-.01em;font-variant-numeric:lining-nums}
@@ -61,14 +65,14 @@ body.noplaying #np{display:none}
 .app{font-family:Display;font-size:var(--app-size,100px);line-height:1.5;color:var(--dim);transition:color .3s,opacity .45s var(--ease)}
 .app.past{opacity:0}
 .app.sel{color:var(--ink)}
-.app.moving{color:var(--accent)}
+.app.moving{color:var(--app-accent,var(--accent))}
 
-/* focus marker: an accent hairline grows under the selected thing */
-.app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .25s var(--ease),opacity .15s}
-.app::after{margin-top:-14px}
+/* focus marker: an accent hairline grows under the selected thing; under an app it takes the app's colour */
+.app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .25s var(--ease),opacity .15s,background-color .5s}
+.app::after{margin-top:-14px;background:var(--app-accent,var(--accent))}
 .inp::after{margin-top:12px}
 .opt .val::after{margin-top:10px}
-.app.sel::after,.inp.sel::after,.opt.sel .val::after{transform:scaleX(1);opacity:1;transition:transform .4s var(--ease),opacity .2s}
+.app.sel::after,.inp.sel::after,.opt.sel .val::after{transform:scaleX(1);opacity:1;transition:transform .4s var(--ease),opacity .2s,background-color .5s}
 
 #inputs{position:absolute;left:128px;right:128px;bottom:150px;display:flex;align-items:baseline;gap:64px;transition:opacity .3s var(--ease) .15s}
 .inp{font-size:40px;font-weight:500;color:var(--dim);transition:color .3s}
@@ -124,7 +128,7 @@ body.icons #headline{display:block;position:absolute;left:128px;top:420px;width:
 #headline span.l{transform:translateX(-32px)}
 #headline span.on{opacity:1;transform:none;transition:opacity .35s var(--ease),transform .5s var(--ease),color .3s}
 body.away #headline{opacity:.4}
-body.moving #headline span{color:var(--accent)}
+body.moving #headline span{color:var(--app-accent,var(--accent))}
 /* tiles: the icons as rounded squares, each named in small capitals beneath, so the row needs no headline.
    The focused tile lifts and its label comes up to full strength. The vertical layout keeps its icon column. */
 body.tiles:not(.vertical) #headline{display:none}
@@ -190,6 +194,7 @@ body.pre #stage{visibility:hidden}
 </style><link rel="stylesheet" href="wordclock.css"></head>
 <body class="pre">
 <div id="stage">
+  <div class="light"></div><div class="light"></div>
   <div class="clock"><div class="time" id="time"></div><div class="date" id="date"></div></div>
   <div id="np"><div class="txt"><div class="src"><i class="eq"><b></b><b></b><b></b><b></b></i><span></span></div><div class="ttl"></div><div class="who"></div><div class="bar"><i></i></div></div><div class="cover"><div class="ph"></div></div></div>
   <div id="headline"></div>
@@ -218,6 +223,8 @@ const OPTS = [
   {key:"order", label:"Order", choices:[["recent","Recently opened"],["custom","Your order"]]},
   {key:"names", label:"Length", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
   {key:"size", label:"Size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
+  {key:"light", label:"Light", choices:[["apps","Each app's own"],["warm","Always warm"],["off","Off"]]},
+  {key:"glow", label:"Strength", choices:[[.4,"Medium"],[.6,"Strong"],[.25,"Soft"]]},
   {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
   {key:"idle", label:"When idle", choices:[["dim","Dim the screen"],["clock","Word clock"]]},
   {key:"dim", label:"After", choices:[[1,"1 minute"],[5,"5 minutes"],[15,"15 minutes"]]},
@@ -240,8 +247,9 @@ function applyPrefs(){
   document.body.classList.toggle('nofade', pref('fade')==='off');
   document.body.classList.toggle('noplaying', pref('playing')==='off');
   document.documentElement.style.setProperty('--icon-radius', {square:'0',rounded:'24%',circle:'50%'}[pref('shape')]);
+  document.documentElement.style.setProperty('--glow', pref('glow'));
   WordClock.set({dots:pref('dots')==='on', level:pref('level')});
-  tick();
+  tick(); light();
 }
 
 // app order: most recently opened first, or the order you set by holding OK on an app.
@@ -304,16 +312,88 @@ function render(){
     const e = els[ai], view = appsEl.clientHeight - 150;
     if(e.offsetTop < scroll) scroll = e.offsetTop;
     if(e.offsetTop + e.offsetHeight > scroll + view) scroll = e.offsetTop + e.offsetHeight - view;
-    track.style.transform = `translateY(${-scroll}px)`;
+    shift = [0, -scroll]; track.style.transform = `translateY(${-scroll}px)`;
     appsEl.classList.toggle('more', track.offsetHeight - scroll > appsEl.clientHeight + 1);
     appsEl.classList.toggle('scrolled', scroll > 0);
   } else if(pref('view')!=='names'){
     // the contact sheet holds still and only slides once focus nears its right-hand end
-    track.style.transform = `translateX(${-Math.max(0, els[ai].offsetLeft - 1100)}px)`;
-  } else track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;
+    shift = [-Math.max(0, els[ai].offsetLeft - 1100), 0];
+    track.style.transform = `translateX(${shift[0]}px)`;
+  } else { shift = [-els[ai].offsetLeft, 0]; track.style.transform = `translateX(${shift[0]}px)`; }
   [...headline.children].forEach((e,i)=>{ e.classList.toggle('on',i===ai); e.classList.toggle('l',i<ai); });
   document.body.classList.toggle('away', row===1);
   [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
+  // the light waits for focus to rest, so holding ◀ ▶ through the row doesn't repaint the room at every step
+  clearTimeout(lightT); lightT = setTimeout(light, 90);
+}
+
+// atmosphere: the room takes on a light from the focused app, like a lamp left on in a cinema.
+// Known apps have a tuned glow and accent; any other borrows its colour from its own icon, softened towards the
+// room; grey icons, the inputs row and "Always warm" get the room's own warm light. Off is the plain background.
+const WARM = {glow:'oklch(30% .04 60)', accent:'var(--accent)'};
+const TONES = [
+  [/netflix/i, 'oklch(38% .10 30)', 'oklch(74% .13 55)'],
+  [/youtube/i, 'oklch(36% .11 25)', 'oklch(68% .16 28)'],
+  [/spotify/i, 'oklch(34% .07 155)', 'oklch(74% .11 150)'],
+  [/plex/i, 'oklch(38% .08 80)', 'oklch(80% .12 82)'],
+  [/prime video|amazonvideo/i, 'oklch(34% .07 245)', 'oklch(76% .08 235)'],
+  [/disney/i, 'oklch(32% .07 270)', 'oklch(76% .07 265)'],
+];
+const lights = document.querySelectorAll('.light'), derived = {};
+let lit = 0, litKey = null, lightT, shift = [0, 0];
+// the icon's colour: the average of its coloured pixels, read from a 16 px copy once per app
+function iconTone(a){
+  if(a.pkg in derived) return derived[a.pkg];
+  derived[a.pkg] = null;
+  const src = icons[a.pkg] ?? (icons[a.pkg] = B.icon ? B.icon(a.pkg) : '');
+  if(!src) return null;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = c.height = 16;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, 16, 16);
+    const d = g.getImageData(0, 0, 16, 16).data; let r = 0, gr = 0, b = 0, w = 0;
+    for(let i = 0; i < d.length; i += 4){
+      const s = (Math.max(d[i],d[i+1],d[i+2]) - Math.min(d[i],d[i+1],d[i+2])) * d[i+3] / 65025;
+      r += d[i]*s; gr += d[i+1]*s; b += d[i+2]*s; w += s;
+    }
+    if(w < 12) return; // a grey or white icon has no colour to lend
+    const rgb = `rgb(${r/w|0} ${gr/w|0} ${b/w|0})`;
+    derived[a.pkg] = {glow:`color-mix(in oklch, ${rgb} 32%, var(--bg))`, accent:`color-mix(in oklch, ${rgb} 65%, var(--ink))`};
+    if(row===0 && apps[ai]===a) light();
+  };
+  img.src = src;
+  return null;
+}
+function tone(){
+  const a = apps[ai];
+  if(pref('light')!=='apps' || row!==0 || !a) return WARM;
+  const t = TONES.find(([re])=>re.test(a.label) || re.test(a.pkg));
+  return t ? {glow:t[1], accent:t[2]} : iconTone(a) || WARM;
+}
+function light(){
+  const off = pref('light')==='off', t = off ? {glow:'', accent:'var(--accent)'} : tone();
+  document.documentElement.style.setProperty('--app-accent', t.accent);
+  const at = pref('view')!=='names' ? spot() : null, key = t.glow + at;
+  if(key===litKey) return;
+  litKey = key; lights[lit].classList.remove('on'); lit ^= 1;
+  if(off) return;
+  lights[lit].style.background = at ? backlight(t.glow, at) : corner(t.glow);
+  lights[lit].classList.add('on');
+}
+// names: the light rises from the bottom-left corner, with a faint answer in the opposite one
+const corner = g => `radial-gradient(70% 55% at 14% 110%, ${g}, transparent 62%),
+  radial-gradient(45% 35% at 96% -6%, color-mix(in oklch, ${g} 30%, transparent), transparent 70%)`;
+// icons: the focused icon is the lamp. A low, wide pool spreads along the strip behind it and a faint wash reaches
+// into the room; moving on, the old pool fades where it was as the new one comes up behind the next icon
+const backlight = (g, [x, y]) => `radial-gradient(420px 230px at ${x}px ${y}px, ${g}, transparent 72%),
+  radial-gradient(1300px 760px at ${x}px ${y - 60}px, color-mix(in oklch, ${g} 35%, transparent), transparent 70%)`;
+// the focused icon's centre on the light layer, where the strip is heading rather than where it is mid-slide
+function spot(){
+  const e = track.children[ai];
+  if(!e) return null;
+  const icon = e.firstElementChild;
+  return [appsEl.offsetLeft + track.offsetLeft + e.offsetLeft + shift[0] + icon.offsetWidth/2 + 24,
+          appsEl.offsetTop + track.offsetTop + e.offsetTop + shift[1] + icon.offsetHeight/2 + 24];
 }
 function activate(){
   if(row===0){ const p = apps[ai].pkg; mru = [p, ...mru.filter(x=>x!==p)]; save('mru', mru); B.launch(p); }
@@ -356,6 +436,7 @@ const TABS = [
   {label:"Apps", keys:["view","order"]},
   {label:"Names", keys:["names","size"]},
   {label:"Icons", keys:["shape","fade"]},
+  {label:"Atmosphere", keys:["light","glow"]},
   {label:"Screen", keys:["layout","clock","playing"]},
   {label:"Idle", keys:["idle","dim","dots","level","now"]},
   {label:"Updates", keys:["updates","version"]},

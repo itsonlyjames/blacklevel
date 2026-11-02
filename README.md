@@ -132,6 +132,17 @@ On the internet, the only service either app contacts is GitHub: the update chec
 
 Turn the update checks off with **Settings… → Updates** in the Remote and **Customise → Updates → Updates** on Home. Either updater checks the SHA-256 of the download against the release's `SHA256SUMS.txt` and refuses to install if that file is missing or doesn't match.
 
+## Verified releases
+
+Every release is checkable, and none of it relies on taking this README's word for it:
+
+- **Attested on GitHub.** From v1.4.0, a GitHub Actions workflow ([attest-release.yml](.github/workflows/attest-release.yml)) checks each release's files against `SHA256SUMS.txt` and signs a provenance attestation for them. They're listed on the repo's [Attestations](https://github.com/itsonlyjames/blacklevel/attestations) page; each one names the commit, the tag and the workflow run, and the SHA-256 of every file.
+- **Recorded in a public log.** Each attestation is also written to [Sigstore](https://www.sigstore.dev)'s public transparency log, which can't be edited afterwards, so a release can't be quietly re-attested later. The attestation's Actions run links to its log entry.
+- **Signed by the maintainer.** In releases after 1.4.1, the tag and `SHA256SUMS.txt` are signed with the key in [docs/allowed_signers](docs/allowed_signers), and GitHub marks the tag as Verified.
+- **Signed apps.** The Mac app is signed with a Developer ID and notarised by Apple; the APK is always signed with the same certificate, so Android only installs updates from it.
+
+What an attestation proves: the files are exactly the ones this repo's release published. What it doesn't: that they were built in CI. The Mac app needs signing and notarising on the maintainer's Mac, so both apps are built there.
+
 ### Check a download
 
 Put the downloads in one folder and run:

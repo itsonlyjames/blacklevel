@@ -31,6 +31,7 @@ import android.util.Base64
 import android.view.KeyEvent
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.widget.FrameLayout
 import org.json.JSONArray
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -40,6 +41,7 @@ import org.json.JSONObject
 
 class HomeActivity : Activity() {
     private lateinit var web: WebView
+    private lateinit var clock: WordClock
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(state: Bundle?) {
@@ -62,7 +64,9 @@ class HomeActivity : Activity() {
             addJavascriptInterface(Bridge(), "Launcher")
             loadUrl("file:///android_asset/index.html")
         }
-        setContentView(web)
+        val root = FrameLayout(this).apply { addView(web) }
+        clock = WordClock(this, root)
+        setContentView(root)
         web.requestFocus()
         registerReceiver(installed, IntentFilter(INSTALLED))
         getSystemService(TvInputManager::class.java)?.registerCallback(inputsChanged, handler)
@@ -118,6 +122,7 @@ class HomeActivity : Activity() {
     }
 
     override fun onPause() {
+        clock.hideNow()
         unwatchSessions()
         super.onPause()
     }
@@ -364,6 +369,16 @@ class HomeActivity : Activity() {
         fun settings() = runOnUiThread {
             startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
+
+        // The word clock's letters, drawn at the panel's own resolution; the page says what's lit (wordclock.js)
+        @JavascriptInterface
+        fun clockShow(letters: String) = runOnUiThread { clock.show(letters) }
+
+        @JavascriptInterface
+        fun clockLight(json: String) = runOnUiThread { clock.light(JSONObject(json)) }
+
+        @JavascriptInterface
+        fun clockHide() = runOnUiThread { clock.hide() }
 
         // Updates come from GitHub Releases, the only request that leaves the local network.
         @JavascriptInterface

@@ -161,8 +161,8 @@ body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
 .opt .arr.r{margin-left:28px}
 .opt.sel{color:var(--ink)}
 .opt.sel .arr{opacity:1}
-.opt.version{margin-top:28px}
-.opt.version .arr{visibility:hidden}
+.opt.version,.opt.now{margin-top:28px}
+.opt.version .arr,.opt.now .arr{visibility:hidden}
 .opt .msg{margin-left:28px;font-size:28px;color:var(--faint)}
 #panel .hint{position:absolute;left:128px;bottom:96px;font-size:24px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
 /* [5] hidden until the fonts are in, then everything settles in at once */
@@ -174,7 +174,7 @@ body.pre #stage{visibility:hidden}
   .eq b{animation:none;transform:scaleY(.6)}
   body.vertical.icons .app .nm{transform:translate(0,-55%)!important}
 }
-</style></head>
+</style><link rel="stylesheet" href="wordclock.css"></head>
 <body class="pre">
 <div id="stage">
   <div class="clock"><div class="time" id="time"></div><div class="date" id="date"></div></div>
@@ -185,6 +185,7 @@ body.pre #stage{visibility:hidden}
   <div id="movehint"></div>
 </div>
 <div id="panel"><h2>Customise</h2><div class="sections"><div id="tabs"></div><div id="opts"></div></div><div class="hint" id="phint"></div></div>
+<script src="wordclock.js"></script>
 <script>
 const EASE = 'cubic-bezier(.22,1,.36,1)', still = matchMedia('(prefers-reduced-motion: reduce)');
 const B = window.Launcher || {
@@ -205,7 +206,10 @@ const OPTS = [
   {key:"names", label:"Length", choices:[["full","Full"],[12,"12 letters"],[10,"10 letters"],[8,"8 letters"]]},
   {key:"size", label:"Size", choices:[[100,"Medium"],[120,"Large"],[80,"Small"]]},
   {key:"clock", label:"Clock", choices:[["12","12-hour"],["24","24-hour"]]},
-  {key:"dim", label:"Dim when idle", choices:[[1,"After 1 minute"],[5,"After 5 minutes"],[15,"After 15 minutes"]]},
+  {key:"idle", label:"When idle", choices:[["dim","Dim the screen"],["clock","Word clock"]]},
+  {key:"dim", label:"After", choices:[[1,"1 minute"],[5,"5 minutes"],[15,"15 minutes"]]},
+  {key:"dots", label:"Minute dots", choices:[["off","Off"],["on","On"]]},
+  {key:"level", label:"Brightness", choices:[["medium","Medium"],["soft","Soft"],["bright","Bright"]]},
   {key:"playing", label:"Now playing", choices:[["on","On"],["off","Off"]]},
   {key:"updates", label:"Updates", choices:[["daily","Check daily"],["off","Off"]]},
 ];
@@ -221,6 +225,7 @@ function applyPrefs(){
   document.body.classList.toggle('nofade', pref('fade')==='off');
   document.body.classList.toggle('noplaying', pref('playing')==='off');
   document.documentElement.style.setProperty('--icon-radius', {square:'0',rounded:'24%',circle:'50%'}[pref('shape')]);
+  WordClock.set({dots:pref('dots')==='on', level:pref('level')});
   tick();
 }
 
@@ -336,7 +341,8 @@ const TABS = [
   {label:"Apps", keys:["view","order"]},
   {label:"Names", keys:["names","size"]},
   {label:"Icons", keys:["shape","fade"]},
-  {label:"Screen", keys:["layout","clock","dim","playing"]},
+  {label:"Screen", keys:["layout","clock","playing"]},
+  {label:"Idle", keys:["idle","dim","dots","level","now"]},
   {label:"Updates", keys:["updates","version"]},
 ];
 const tabsEl = document.getElementById('tabs'), optsEl = document.getElementById('opts'), phint = document.getElementById('phint');
@@ -346,6 +352,7 @@ const keys = () => TABS[ti].keys.filter(k=>k!=='version' || current);
 function renderPanel(){
   if(!tabsEl.children.length) tabsEl.innerHTML = TABS.map(t=>`<div class="tab"><span>${t.label}</span></div>`).join('');
   optsEl.innerHTML = keys().map(k=>{
+    if(k==='now') return `<div class="opt now"><span class="lbl">Word clock</span><span class="arr l">‹</span><span class="val">Show now</span><span class="msg">Any button brings you back</span></div>`;
     if(k==='version') return `<div class="opt version"><span class="lbl">${latest?'Update':'Version'}</span><span class="arr l">‹</span><span class="val">${latest?`Install ${latest}`:current}</span><span class="msg">${updateMsg || (latest ? `You have ${current}` : 'OK to check now')}</span></div>`;
     const o = OPTS.find(o=>o.key===k);
     return `<div class="opt"><span class="lbl">${o.label}</span><span class="arr l">‹</span><span class="val">${o.choices.find(c=>c[0]===pref(o.key))[1]}</span><span class="arr r">›</span></div>`;
@@ -363,6 +370,7 @@ function showPanel(on){ open = on; pi = 0; inOpts = false; ti = latest ? TABS.le
 function cycle(d){
   const k = keys()[pi];
   if(k==='version'){ if(d>0) updateAction(); return; }
+  if(k==='now'){ if(d>0) WordClock.show(); return; }
   const o = OPTS.find(o=>o.key===k), i = o.choices.findIndex(c=>c[0]===pref(o.key));
   prefs[o.key] = o.choices[(i+d+o.choices.length)%o.choices.length][0];
   save('prefs', prefs);
@@ -389,9 +397,12 @@ function panelKey(k){
   selPanel(); return true;
 }
 // called by the app on the remote's Back button
-window.back = () => { if(moving) endMove(false); else if(open) panelBack(); };
+window.back = () => { if(WordClock.active) wake(); else if(moving) endMove(false); else if(open) panelBack(); };
 
 document.addEventListener('keydown',e=>{
+  // the word clock takes the first key and only goes, leaving everything as it was;
+  // the repeats of a held OK that opened it don't close it again
+  if(WordClock.active){ if(!e.repeat) wake(); e.preventDefault(); return; }
   wake();
   if(e.key!=='Enter'){ clearTimeout(hold); hold = null; }
   else if(e.repeat && !moving){ e.preventDefault(); return; }
@@ -427,9 +438,11 @@ function tick(){
 }
 tick(); setInterval(tick, 5000);
 
-// OLED care: dim after a minute idle, and drift the whole stage a few px every minute
+// OLED care: after a minute idle, dim or show the word clock (over whatever was open, which stays as it was);
+// and drift the whole stage a few px every minute
 let idleT; const stage = document.getElementById('stage');
-function wake(){ document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(()=>document.body.classList.add('idle'), pref('dim')*60000); }
+function wake(){ WordClock.hide(); document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(rest, pref('dim')*60000); }
+function rest(){ pref('idle')==='clock' ? WordClock.show() : document.body.classList.add('idle'); }
 setInterval(()=>{ stage.style.transform = `translate(${Math.round(Math.random()*16-8)}px,${Math.round(Math.random()*16-8)}px)`; }, 60000);
 
 // now playing: the app sends what's playing whenever it changes (null when nothing is);

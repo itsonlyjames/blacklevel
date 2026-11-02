@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Word Clock Treatments</title>
+<style>
+@font-face{font-family:Display;src:url(../app/assets/fonts/InstrumentSerif-Regular.ttf)}
+@font-face{font-family:Text;src:url(../app/assets/fonts/HankenGrotesk.ttf);font-weight:100 900}
+:root{
+  --bg:oklch(13% 0.008 60);
+  --ink:oklch(90% 0.025 80);
+  --dim:oklch(46% 0.018 70);
+  --lit:oklch(92% 0.04 82);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080706;color:var(--dim);font:500 15px/1.4 Text;padding:28px 32px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:baseline;margin-bottom:20px}
+h1{font:400 34px Display;color:var(--ink)}
+nav{display:flex;gap:6px}
+button{font:600 13px Text;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);background:none;border:1px solid oklch(26% .01 65);border-radius:999px;padding:7px 14px;cursor:pointer}
+button[aria-pressed=true]{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+#say{font:400 22px Display;color:var(--ink);min-width:22ch}
+#note{max-width:1100px;margin:14px 0 0;color:var(--dim)}
+#note b{color:var(--ink);font-weight:600}
+.keys{color:oklch(36% .012 65);font-size:13px}
+
+/* the TV, drawn at its real 1920×1080 and scaled to fit */
+#frame{position:relative;width:100%;aspect-ratio:16/9;max-width:1600px;overflow:hidden;border-radius:6px;outline:1px solid oklch(20% .008 60)}
+#tv{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;display:grid;place-items:center;background:var(--bg)}
+#wrap{position:relative;transition:transform 8s ease-in-out}
+#grid{display:grid;grid-template-columns:repeat(11,var(--cw));grid-auto-rows:var(--ch);position:relative}
+.c{position:relative;display:grid;place-items:center;color:var(--off);
+   transition:color var(--fade) ease-in-out var(--d,0s),text-shadow var(--fade) ease-in-out var(--d,0s)}
+.c.on{color:var(--lit)}
+.dots{position:absolute;display:flex;gap:var(--dg)}
+.dots i{width:var(--ds);height:var(--ds);border-radius:50%;background:var(--off);transition:background 1.2s ease-in-out}
+.dots i.on{background:var(--dotlit)}
+.dots.hide{display:none}
+
+/* 1 · Faceplate: a dark plate on the wall, letters cut through it and lit from behind */
+.t1{--cw:70px;--ch:72px;--off:oklch(23% .008 62);--fade:1.6s;--dotlit:oklch(80% .04 80)}
+.t1 #tv{background:oklch(11% .006 60)}
+.t1 #wrap{width:900px;height:900px;display:grid;place-items:center;border-radius:6px;
+  background:linear-gradient(160deg,oklch(15.5% .006 62),oklch(13% .006 60));
+  box-shadow:inset 0 1px 0 oklch(20% .008 65),0 40px 80px -20px #000}
+.t1 .c{font:600 38px Text}
+.t1 .c.on{text-shadow:0 0 14px oklch(82% .08 75 / .45)}
+/* corner dots, like the physical ones: one per minute past the five */
+.t1 .dots{inset:34px;display:block}
+.t1 .dots i{position:absolute}
+.t1 .dots i:nth-child(1){left:0;top:0}.t1 .dots i:nth-child(2){right:0;top:0}
+.t1 .dots i:nth-child(3){right:0;bottom:0}.t1 .dots i:nth-child(4){left:0;bottom:0}
+.t1{--ds:9px}
+
+/* 2 · Editorial: the launcher's serif, no glow, words arrive one after another */
+.t2{--cw:96px;--ch:86px;--off:oklch(21% .01 64);--fade:1.4s;--dotlit:var(--ink);--ds:30px;--dg:14px}
+.t2 .c{font:400 70px Display}
+.t2 .dots{left:50%;bottom:-64px;transform:translateX(-50%)}
+.t2 .dots i{height:2px;border-radius:1px}
+
+/* 3 · Lantern: thin sans, unlit letters almost gone, a warm pool of light behind the words */
+.t3{--cw:92px;--ch:84px;--off:oklch(17.5% .006 62);--fade:2.4s;--dotlit:oklch(75% .07 72);--ds:7px;--dg:18px}
+.t3 #tv{background:oklch(10% .005 60)}
+.t3 .c{font:300 44px Text}
+.t3 .c::after{content:'';position:absolute;inset:-40%;border-radius:50%;
+  background:radial-gradient(closest-side,oklch(70% .1 68 / .085),transparent);
+  opacity:0;transition:opacity var(--fade) ease-in-out var(--d,0s);pointer-events:none}
+.t3 .c.on::after{opacity:1}
+.t3 .c.on{text-shadow:0 0 1px oklch(90% .05 80 / .6),0 0 22px oklch(78% .1 70 / .4)}
+.t3 .dots{left:50%;bottom:-56px;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Word clock</h1>
+  <nav id="tabs">
+    <button data-t="t1">1 · Faceplate</button>
+    <button data-t="t2">2 · Editorial</button>
+    <button data-t="t3">3 · Lantern</button>
+  </nav>
+  <nav>
+    <button id="back">−5 min</button>
+    <button id="fwd">+5 min</button>
+    <button id="live">Live</button>
+    <button id="dotsBtn">Minute dots</button>
+  </nav>
+  <span id="say"></span>
+</header>
+<div id="frame"><div id="tv"><div id="wrap"><div id="grid"></div><div class="dots"><i></i><i></i><i></i><i></i></div></div></div></div>
+<p id="note"></p>
+<p class="keys">Keys: 1 2 3 treatment · ◀ ▶ step five minutes · L live · D minute dots</p>
+
+<script>
+// 11 × 10. Unused letters are filler; NOIR on the ninth row is never lit.
+const ROWS = [
+  "ITRISOHALFV",
+  "TWENTYFIVEX",
+  "QUARTERUTEN",
+  "PASTMTONINE",
+  "ONETWOTHREE",
+  "FOURFIVESIX",
+  "SEVENEIGHTL",
+  "ELEVENATENK",
+  "TWELVENOIRZ",
+  "ESNOCLOCKAR",
+];
+const W = 11, FLAT = ROWS.join("");
+const HOURS = ["TWELVE","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN"];
+const MINS = {5:["FIVE"],10:["TEN"],15:["QUARTER"],20:["TWENTY"],25:["TWENTY","FIVE"],30:["HALF"]};
+
+// slot: count of five-minute steps since midnight (0–287)
+function words(slot){
+  const h = Math.floor(slot / 12) % 24, m = (slot % 12) * 5;
+  if (m === 0) return ["IT","IS",HOURS[h % 12],"OCLOCK"];
+  if (m <= 30) return ["IT","IS",...MINS[m],"PAST",HOURS[h % 12]];
+  return ["IT","IS",...MINS[60 - m],"TO",HOURS[(h + 1) % 12]];
+}
+
+// each word is the first match after the previous one, within a single row
+function cells(ws){
+  const out = []; let from = 0;
+  for (const w of ws){
+    let i = from;
+    for (;;){
+      i = FLAT.indexOf(w, i);
+      if (i < 0) return null;
+      if (Math.floor(i / W) === Math.floor((i + w.length - 1) / W)) break;
+      i++;
+    }
+    out.push([...Array(w.length)].map((_, k) => i + k));
+    from = i + w.length;
+  }
+  return out;
+}
+
+let ok = 0;
+for (let s = 0; s < 288; s++) if (cells(words(s))) ok++;
+
+const grid = document.getElementById("grid");
+const els = [...FLAT].map(ch => { const d = document.createElement("span"); d.className = "c"; d.textContent = ch; grid.appendChild(d); return d; });
+const dots = [...document.querySelectorAll(".dots i")];
+
+let offset = 0, live = true, showDots = false, treatment = "t1", lastKey = "";
+const NOTES = {
+  t1: "<b>Faceplate.</b> Closest to the physical object: a near-black plate with a faint top edge, letters in Hanken Grotesk semibold as if cut through it, lit from behind with a small, tight halo. Words cross-fade together over 1.6 s, like a lamp warming. Minute dots sit in the plate's corners. The plate is the one static area brighter than the background, so it stays at about 15% lightness and drifts with the pixel shift.",
+  t2: "<b>Editorial.</b> Uses Instrument Serif, the font the launcher's clock already uses, so it reads as part of Blacklevel rather than a separate gadget. No glow at all: lit words are just the launcher's ink colour. The old words fade out first, then the new ones arrive one after another, left to right, about a quarter-second apart. Minute marks are hairlines under the grid.",
+  t3: "<b>Lantern.</b> The most OLED-friendly and the most atmospheric. Unlit letters are barely there (you see them from the sofa, not from across the room), lit words have a soft two-layer glow and a very faint pool of warm light behind them. The slowest fade (2.4 s), staggered by word. Minute dots are tiny and sit below.",
+};
+
+function render(){
+  const now = new Date(Date.now() + offset * 60000);
+  const mins = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  // nearest five by default; with dots, floor it so the dots add exact minutes
+  const slot = showDots ? Math.floor(mins / 5) % 288 : Math.round(mins / 5) % 288;
+  const extra = showDots ? Math.floor(mins) % 5 : 0;
+  const key = slot + ":" + extra + ":" + treatment;
+  if (key === lastKey) return;
+  lastKey = key;
+
+  const ws = words(slot), lit = cells(ws);
+  const on = new Map();
+  const stagger = treatment === "t1" ? 0 : treatment === "t2" ? .25 : .35;
+  const lead = treatment === "t1" ? .3 : .9; // let the old words start fading first
+  lit.forEach((cs, wi) => cs.forEach(i => on.set(i, lead + wi * stagger)));
+  els.forEach((el, i) => {
+    const want = on.has(i);
+    if (want === el.classList.contains("on")) return;
+    el.style.setProperty("--d", want ? on.get(i) + "s" : "0s");
+    el.classList.toggle("on", want);
+  });
+  dots.forEach((d, i) => d.classList.toggle("on", i < extra));
+
+  const hh = now.getHours(), mm = String(now.getMinutes()).padStart(2, "0");
+  document.getElementById("say").textContent = `${hh}:${mm} — ${ws.join(" ").replace("OCLOCK","O’CLOCK").toLowerCase()}`;
+}
+
+function setTreatment(t){
+  treatment = t;
+  document.body.className = t;
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === t));
+  document.getElementById("note").innerHTML = NOTES[t] + ` <span class="keys">Matrix check: ${ok}/288 five-minute times light correctly.</span>`;
+  lastKey = "";
+  render();
+}
+function step(n){ live = false; offset += n; sync(); render(); }
+function sync(){
+  document.getElementById("live").setAttribute("aria-pressed", live);
+  document.getElementById("dotsBtn").setAttribute("aria-pressed", showDots);
+  document.querySelector(".dots").classList.toggle("hide", !showDots);
+}
+
+document.getElementById("tabs").onclick = e => e.target.dataset.t && setTreatment(e.target.dataset.t);
+document.getElementById("back").onclick = () => step(-5);
+document.getElementById("fwd").onclick = () => step(5);
+document.getElementById("live").onclick = () => { live = true; offset = 0; sync(); render(); };
+document.getElementById("dotsBtn").onclick = () => { showDots = !showDots; sync(); lastKey = ""; render(); };
+document.addEventListener("keydown", e => {
+  if ("123".includes(e.key)) setTreatment("t" + e.key);
+  else if (e.key === "ArrowLeft") step(-5);
+  else if (e.key === "ArrowRight") step(5);
+  else if (e.key.toLowerCase() === "l") document.getElementById("live").click();
+  else if (e.key.toLowerCase() === "d") document.getElementById("dotsBtn").click();
+});
+
+const tv = document.getElementById("tv"), frame = document.getElementById("frame");
+new ResizeObserver(() => tv.style.transform = `scale(${frame.clientWidth / 1920})`).observe(frame);
+// burn-in drift, same as the launcher: a few px every minute
+setInterval(() => document.getElementById("wrap").style.transform = `translate(${Math.round(Math.random()*16-8)}px,${Math.round(Math.random()*16-8)}px)`, 60000);
+setInterval(render, 1000);
+
+sync();
+setTreatment("t1");
+</script>
+</body>
+</html>

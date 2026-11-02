@@ -2,8 +2,8 @@
 
 A replacement home screen for Sony BRAVIA Google TV / Android TV. The time, one row of your apps, one row of your HDMI inputs, and Settings. Nothing else.
 
-![Apps row focused](../docs/images/home-apps.png)
-![Inputs row focused](../docs/images/home-inputs.png)
+![Layouts: app names, icons, tiles, a vertical column of icons or names, and the idle word clock](../docs/images/home-layouts.webp)
+![Icon shapes: square, rounded and circle](../docs/images/icon-shapes.webp)
 
 - **Apps** come from the TV itself (every app with a TV launcher entry), minus the bundled Sony and Google extras (Play Store, Sony Select, the Vewd browser and so on). YouTube stays. By default the app you opened last moves to the front; hold OK on an app to pick it up, ◀ ▶ to move it, OK to place it (Back cancels). Placing one switches **Customise → Apps → Order** to *Your order*; switch it back to *Recently opened* any time.
 - **Names, icons or tiles**: **Customise → Apps → Show as** picks the row of app names, *Icons*, a close-set strip of each app's own icon with the focused app's name above it, or *Tiles*, the icons as rounded squares with each app's name in small capitals beneath and the focused one lifted (no name above; the vertical layout shows tiles as its icon column). **Customise → Icons** sets the icons' **Shape** (square, rounded or circle; apps with an older-style icon keep their own) and whether the icons you're not on fade to grey (**Fade others**).

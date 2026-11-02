@@ -528,7 +528,7 @@ final class TVStore: ObservableObject {
             var image: NSImage?
             if self.authorized == true, self.supports("system", "getScreenshot"),
                let result = try? await self.client.call("system", "getScreenshot", version: version) {
-                image = try await Self.image(from: result)
+                image = try await Self.image(from: result, host: self.host)
             }
             if image == nil, self.adbAvailable {
                 image = NSImage(data: try await ADB.screenshot(host: self.host))
@@ -545,7 +545,8 @@ final class TVStore: ObservableObject {
     }
 
     /// getScreenshot isn't documented; accept a URL or base64 image anywhere in the result.
-    private static func image(from result: [Any]) async throws -> NSImage? {
+    /// A URL must point back at the TV (`host`): the reply shouldn't send us anywhere else.
+    private static func image(from result: [Any], host: String) async throws -> NSImage? {
         var strings: [String] = []
         func collect(_ value: Any) {
             if let s = value as? String { strings.append(s) }
@@ -555,6 +556,7 @@ final class TVStore: ObservableObject {
         result.forEach(collect)
         for s in strings {
             if s.hasPrefix("http"), let url = URL(string: s) {
+                guard url.host == host else { throw BraviaError.transport("The TV's screenshot isn't on the TV") }
                 let (data, _) = try await URLSession.shared.data(from: url)
                 if let image = NSImage(data: data) { return image }
             }

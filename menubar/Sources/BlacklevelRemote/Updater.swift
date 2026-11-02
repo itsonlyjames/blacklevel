@@ -76,6 +76,10 @@ final class Updater: ObservableObject {
             }
             // No checksums, no install: an update that can't be checked isn't offered.
             guard let sums = assets["SHA256SUMS.txt"] else { throw UpdateError("\(version) has no checksums") }
+            // Only GitHub's own download links; it redirects them to its CDN, which URLSession follows.
+            guard [zip, sums].allSatisfy({ $0.scheme == "https" && $0.host == "github.com" }) else {
+                throw UpdateError("\(version)'s downloads aren't on GitHub")
+            }
             release = Release(version: version, page: page, zip: zip, sums: sums)
             status = nil
         } catch {

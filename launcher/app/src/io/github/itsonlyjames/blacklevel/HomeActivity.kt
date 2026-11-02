@@ -453,10 +453,13 @@ class HomeActivity : Activity() {
                         .associate { it.getString("name") to it.getString("browser_download_url") }
                     val url = assets[name] ?: throw Exception("$version has no APK")
                     val sums = assets["SHA256SUMS.txt"] ?: throw Exception("$version has no checksums")
+                    // Only GitHub's own download links; it redirects them to its CDN, which get() follows.
+                    if (listOf(url, sums).any { URL(it).run { protocol != "https" || host != "github.com" } })
+                        throw Exception("$version's downloads aren't on GitHub")
                     updateMessage("Downloading $version…")
-                    val apk = URL(url).readBytes()
+                    val apk = get(url)
                     // No line for this APK (expected null) fails here too
-                    val expected = String(URL(sums).readBytes()).lines().firstOrNull { it.endsWith(" $name") }?.substringBefore(" ")
+                    val expected = String(get(sums)).lines().firstOrNull { it.endsWith(" $name") }?.substringBefore(" ")
                     val actual = MessageDigest.getInstance("SHA-256").digest(apk).joinToString("") { "%02x".format(it) }
                     if (expected != actual) throw Exception("The download didn't match its checksum")
                     install(apk)
@@ -481,11 +484,15 @@ class HomeActivity : Activity() {
             }
         }
 
-        private fun latestRelease(): JSONObject {
-            val conn = URL(RELEASES).openConnection() as HttpURLConnection
+        private fun latestRelease(): JSONObject = JSONObject(String(get(RELEASES, "application/vnd.github+json")))
+
+        /** The body of a GET; anything but a 2xx throws, so an error page is never read as the answer. */
+        private fun get(url: String, accept: String? = null): ByteArray {
+            val conn = URL(url).openConnection() as HttpURLConnection
             conn.connectTimeout = 10000; conn.readTimeout = 15000
-            conn.setRequestProperty("Accept", "application/vnd.github+json")
-            return JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
+            accept?.let { conn.setRequestProperty("Accept", it) }
+            if (conn.responseCode !in 200..299) throw Exception("GitHub answered ${conn.responseCode}")
+            return conn.inputStream.use { it.readBytes() }
         }
 
         private fun newer(a: String, b: String): Boolean {

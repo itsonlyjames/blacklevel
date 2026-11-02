@@ -23,7 +23,7 @@ Both parts are independent. Use either, or both.
 A replacement home screen for the TV (Android TV / Google TV). The time, one row of your apps, one row of your HDMI inputs, and Settings. Nothing else. Built for OLED: dark, dims when idle, drifts to avoid burn-in. ~150 KB.
 
 <p>
-  <img src="docs/images/home-layouts.webp" alt="Blacklevel Home's layouts: app names, icons, tiles, a vertical column of icons or names, and the idle word clock" width="100%">
+  <img src="docs/images/home-tv.webp" alt="Blacklevel Home on a TV: the time, a row of app names, the HDMI inputs and what's playing" width="100%">
 </p>
 
 ### [Blacklevel Remote](menubar/)

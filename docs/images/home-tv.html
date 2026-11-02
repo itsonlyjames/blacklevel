@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Render: brave/chrome --headless --hide-scrollbars --force-device-scale-factor=2 --window-size=1600,900 --virtual-time-budget=4000 --screenshot=home-tv.png home-tv.html, then convert to home-tv.webp -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:900px;overflow:hidden;background:oklch(8% 0.006 60)}
+/* a dark room, lit only by the screen */
+body{position:relative;background:
+  radial-gradient(1100px 620px at 50% 44%, oklch(25% 0.04 52 / .9), transparent 70%),
+  linear-gradient(180deg, oklch(11% 0.008 60), oklch(8% 0.006 60) 78%, oklch(6% 0.005 60))}
+.tv{position:absolute;left:170px;top:70px;width:1260px;padding:6px;border-radius:8px;background:linear-gradient(#0b0b0b,#020202);
+  box-shadow:0 0 0 1px oklch(100% 0 0 / .06),0 50px 120px -30px #000,0 0 320px -30px oklch(70% 0.14 50 / .45)}
+.screen{position:relative;width:1248px;height:702px;overflow:hidden;border-radius:2px;background:#000}
+/* the real Home page, with its desktop sample data, at 1080p scaled to fit */
+.screen iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform:scale(.65);transform-origin:0 0}
+/* a faint sheen across the glass */
+.screen::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg, oklch(100% 0 0 / .035), transparent 38%);pointer-events:none}
+/* low console the TV stands on, catching the glow */
+.console{position:absolute;left:120px;right:120px;top:802px;height:14px;border-radius:2px;background:linear-gradient(90deg, oklch(14% 0.012 55), oklch(19% 0.02 55) 50%, oklch(14% 0.012 55));box-shadow:0 30px 60px #000}
+.feet{position:absolute;top:784px;width:8px;height:18px;background:linear-gradient(#0c0c0c,#050505)}
+.reflect{position:absolute;left:300px;right:300px;top:816px;height:80px;background:radial-gradient(50% 100% at 50% 0, oklch(55% 0.1 50 / .12), transparent)}
+</style></head><body>
+<div class="tv"><div class="screen"><iframe src="../../launcher/app/assets/index.html"></iframe></div></div>
+<div class="feet" style="left:340px"></div><div class="feet" style="right:340px"></div>
+<div class="console"></div>
+<div class="reflect"></div>
+</body></html>

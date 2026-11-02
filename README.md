@@ -16,7 +16,7 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
 | **[Blacklevel Remote](menubar/)** | macOS 14+ | A SwiftUI menu bar remote: power, volume, inputs, apps, D-pad, playback, picture and sound settings, text entry, screenshots. Uses Sony's BRAVIA REST API and IRCC codes. |
 
 <p align="center">
-  <img src="docs/images/remote-menu.png" alt="Blacklevel Remote menu bar window" width="340">
+  <img src="docs/images/remote-settings.png" alt="Blacklevel Remote menu bar window, with the Picture and Sound sections expanded alongside" width="680">
 </p>
 
 ## Quick start

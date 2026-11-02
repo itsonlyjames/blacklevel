@@ -2,7 +2,7 @@
 
 A native SwiftUI menu bar remote for Sony BRAVIA TVs. It uses Sony's BRAVIA REST API and IRCC remote codes, with no third-party code.
 
-<img src="../docs/images/remote-menu.png" alt="Blacklevel Remote" width="340">
+<img src="../docs/images/remote-settings.png" alt="Blacklevel Remote, with the Picture and Sound sections expanded alongside" width="680">
 
 ## Install
 

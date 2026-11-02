@@ -66,6 +66,9 @@ body.noplaying #np{display:none}
 .app.past{opacity:0}
 .app.sel{color:var(--ink)}
 .app.moving{color:var(--app-accent,var(--accent))}
+/* the focused name steps forward a touch, from its baseline so the row doesn't shift */
+body:not(.icons):not(.vertical) .app{transform-origin:0 80%;transition:color .3s,opacity .45s var(--ease),transform .2s var(--ease)}
+body:not(.icons):not(.vertical) .app.sel{transform:scale(1.04)}
 
 /* focus marker: an accent hairline grows under the selected thing; under an app it takes the app's colour */
 .app::after,.inp::after,.opt .val::after{content:"";display:block;height:4px;border-radius:2px;background:var(--accent);transform:scaleX(0);opacity:0;transform-origin:0 50%;transition:transform .25s var(--ease),opacity .15s,background-color .5s}
@@ -123,10 +126,11 @@ body.icons .app.sel img,body.icons .app.sel .ph,body.nofade .app img,body.nofade
 body.icons .app::after{margin-top:20px}
 body.icons .app.moving{transform:translateY(-16px)}
 body.icons #headline{display:block;position:absolute;left:128px;top:420px;width:1664px;height:180px;transition:opacity .3s var(--ease)}
-#headline span{position:absolute;left:0;bottom:0;font-family:Display;font-size:150px;line-height:1;white-space:nowrap;opacity:0;transform:translateX(32px);transition:opacity .15s var(--ease),transform .5s var(--ease),color .3s}
+#headline span{position:absolute;left:0;bottom:0;font-family:Display;font-size:150px;line-height:1;white-space:nowrap;opacity:0;transform:translateX(32px);transition:opacity .12s var(--ease),transform .5s var(--ease),color .3s}
 /* names wait to the right and leave to the left, so the headline moves with ◀ ▶ like the strip; the old one clears fast */
 #headline span.l{transform:translateX(-32px)}
-#headline span.on{opacity:1;transform:none;transition:opacity .35s var(--ease),transform .5s var(--ease),color .3s}
+/* the new name only starts to show once the old one is out (.12s), so two names never overlap */
+#headline span.on{opacity:1;transform:none;transition:opacity .3s var(--ease) .12s,transform .5s var(--ease),color .3s}
 body.away #headline{opacity:.4}
 body.moving #headline span{color:var(--app-accent,var(--accent))}
 /* tiles: the icons as rounded squares, each named in small capitals beneath, so the row needs no headline.
@@ -152,13 +156,16 @@ body.vertical.icons .app.sel .nm{opacity:1;transform:translate(0,-55%)}
 body.vertical.icons .app::after{margin-top:14px;width:112px}
 
 /* customise panel: covers the stage, same type, same focus hairline */
-#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;display:flex;flex-direction:column;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .25s var(--ease),visibility 0s .25s}
-body.panel #panel{opacity:1;visibility:visible;transition:opacity .35s var(--ease)}
+/* Home and Customise take turns rather than crossfading, so their words never sit over each other:
+   opening, Home goes, then the panel comes up; closing, the panel goes, then Home comes back (body.unpanel) */
+#panel{position:absolute;inset:0;z-index:1;padding:96px 128px;display:flex;flex-direction:column;background:var(--bg);opacity:0;visibility:hidden;transition:opacity .18s var(--ease),visibility 0s .18s}
+body.panel #panel{opacity:1;visibility:visible;transition:opacity .3s var(--ease) .18s}
 /* opening, the title then the sections rise into place; closing is a quicker fade */
 #panel h2,.sections{transform:translateY(16px);transition:transform .25s var(--ease)}
-body.panel #panel h2{transform:none;transition:transform .5s var(--ease)}
-body.panel .sections{transform:none;transition:transform .5s var(--ease) .05s}
-body.panel #stage{opacity:0;transition:opacity .35s var(--ease)}
+body.panel #panel h2{transform:none;transition:transform .5s var(--ease) .18s}
+body.panel .sections{transform:none;transition:transform .5s var(--ease) .23s}
+body.panel #stage{opacity:0;transition:opacity .18s var(--ease)}
+body.unpanel #stage{transition:opacity .35s var(--ease) .18s,transform 8s ease-in-out}
 #panel h2{font-family:Display;font-weight:400;font-size:120px;line-height:1;margin-bottom:64px}
 /* sections down the left, the open section's options on the right, split by a faint rule that runs from the title to the hints.
    The panel only shows while you're in it, so the rule is no burn-in risk. */
@@ -187,7 +194,7 @@ body.pre #stage{visibility:hidden}
 /* reduced motion: nothing slides, grows or lifts; fades, colour, the idle dim and the burn-in drift stay */
 @media (prefers-reduced-motion:reduce){
   #track{transition:none}
-  .app::after,.inp::after,.opt .val::after,.tab span::after,#headline span,#panel h2,.sections,body.icons .app.moving,body.tiles .app.sel img,body.tiles .app.sel .ph,#np,#np .cover img{transform:none!important}
+  .app.sel,.app::after,.inp::after,.opt .val::after,.tab span::after,#headline span,#panel h2,.sections,body.icons .app.moving,body.tiles .app.sel img,body.tiles .app.sel .ph,#np,#np .cover img{transform:none!important}
   .eq b{animation:none;transform:scaleY(.6)}
   body.vertical.icons .app .nm{transform:translate(0,-55%)!important}
 }
@@ -462,7 +469,12 @@ function selPanel(){
     : '▲ ▼ choose &nbsp;·&nbsp; ▶ open &nbsp;·&nbsp; Back to close &nbsp;·&nbsp; Hold OK on an app to move it';
 }
 // opens on Updates when there's one to install
-function showPanel(on){ open = on; pi = 0; inOpts = false; ti = latest ? TABS.length-1 : 0; document.body.classList.toggle('panel', on); if(on) renderPanel(); }
+// closing, Home holds back until the panel has gone (body.unpanel), then the hold comes off
+let unpanelT;
+function showPanel(on){
+  if(open && !on){ document.body.classList.add('unpanel'); clearTimeout(unpanelT); unpanelT = setTimeout(()=>document.body.classList.remove('unpanel'), 600); }
+  open = on; pi = 0; inOpts = false; ti = latest ? TABS.length-1 : 0; document.body.classList.toggle('panel', on); if(on) renderPanel();
+}
 function cycle(d){
   const k = keys()[pi];
   if(k==='version'){ if(d>0) updateAction(); return; }

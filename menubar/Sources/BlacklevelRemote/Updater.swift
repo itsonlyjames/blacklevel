@@ -11,7 +11,7 @@ final class Updater: ObservableObject {
         let version: String
         let page: URL
         let zip: URL
-        let sums: URL?
+        let sums: URL
     }
 
     static let shared = Updater()
@@ -74,7 +74,9 @@ final class Updater: ObservableObject {
             guard let zip = assets["BlacklevelRemote-\(version)-macOS.zip"] else {
                 throw UpdateError("\(version) has no macOS download")
             }
-            release = Release(version: version, page: page, zip: zip, sums: assets["SHA256SUMS.txt"])
+            // No checksums, no install: an update that can't be checked isn't offered.
+            guard let sums = assets["SHA256SUMS.txt"] else { throw UpdateError("\(version) has no checksums") }
+            release = Release(version: version, page: page, zip: zip, sums: sums)
             status = nil
         } catch {
             // Keeps any release already found: a failed background check shouldn't hide it.
@@ -144,14 +146,13 @@ final class Updater: ObservableObject {
         let zip = dir.appendingPathComponent(release.zip.lastPathComponent)
         try FileManager.default.moveItem(at: downloaded, to: zip)
 
-        if let sums = release.sums {
-            let (data, _) = try await URLSession.shared.data(from: sums)
-            let line = String(decoding: data, as: UTF8.self).split(separator: "\n")
-                .first { $0.hasSuffix(" \(zip.lastPathComponent)") }
-            let expected = line?.split(separator: " ").first.map(String.init)
-            let actual = SHA256.hash(data: try Data(contentsOf: zip)).map { String(format: "%02x", $0) }.joined()
-            guard expected == actual else { throw UpdateError("The download didn't match its checksum") }
-        }
+        let (data, _) = try await URLSession.shared.data(from: release.sums)
+        let line = String(decoding: data, as: UTF8.self).split(separator: "\n")
+            .first { $0.hasSuffix(" \(zip.lastPathComponent)") }
+        let expected = line?.split(separator: " ").first.map(String.init)
+        let actual = SHA256.hash(data: try Data(contentsOf: zip)).map { String(format: "%02x", $0) }.joined()
+        // No line for this zip (expected nil) fails here too
+        guard expected == actual else { throw UpdateError("The download didn't match its checksum") }
 
         guard Shell.run("/usr/bin/ditto", ["-x", "-k", zip.path, dir.path]) != nil else { throw UpdateError("Couldn't unpack the update") }
         let fresh = dir.appendingPathComponent(Bundle.main.bundleURL.lastPathComponent)

@@ -452,13 +452,13 @@ class HomeActivity : Activity() {
                     val assets = release.getJSONArray("assets").let { list -> (0 until list.length()).map { list.getJSONObject(it) } }
                         .associate { it.getString("name") to it.getString("browser_download_url") }
                     val url = assets[name] ?: throw Exception("$version has no APK")
+                    val sums = assets["SHA256SUMS.txt"] ?: throw Exception("$version has no checksums")
                     updateMessage("Downloading $version…")
                     val apk = URL(url).readBytes()
-                    assets["SHA256SUMS.txt"]?.let { sums ->
-                        val expected = String(URL(sums).readBytes()).lines().firstOrNull { it.endsWith(" $name") }?.substringBefore(" ")
-                        val actual = MessageDigest.getInstance("SHA-256").digest(apk).joinToString("") { "%02x".format(it) }
-                        if (expected != actual) throw Exception("The download didn't match its checksum")
-                    }
+                    // No line for this APK (expected null) fails here too
+                    val expected = String(URL(sums).readBytes()).lines().firstOrNull { it.endsWith(" $name") }?.substringBefore(" ")
+                    val actual = MessageDigest.getInstance("SHA-256").digest(apk).joinToString("") { "%02x".format(it) }
+                    if (expected != actual) throw Exception("The download didn't match its checksum")
                     install(apk)
                     updateMessage("Installing $version…")
                 } catch (e: Exception) { updateMessage(e.message ?: "Update failed") }

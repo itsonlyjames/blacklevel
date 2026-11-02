@@ -1,7 +1,7 @@
-// Word clock: the time in lit words on a fixed 11 × 10 grid of letters, to the nearest five minutes
+// Word clock: the time in lit words on a fixed 11 × 10 grid of letters, by the last five minutes
 // ("IT IS TWENTY FIVE TO SEVEN"). The home page owns idle, keys and settings; this only draws.
 //   WordClock.show() / WordClock.hide() / WordClock.active
-//   WordClock.set({dots, level})  dots: floor to the five and light one dot per minute past it
+//   WordClock.set({dots, level})  dots: light one dot per minute past the five
 //                                 level: 'soft' | 'medium' | 'bright'
 // It does no work while hidden; while shown it checks the time every few seconds and only touches the
 // letters when the words change.
@@ -65,7 +65,8 @@ let timer = null, drift = null, waitT = null, outT = null, ready = false, shown 
 
 function render(){
   const d = new Date(), mins = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
-  const slot = (opts.dots ? Math.floor(mins / 5) : Math.round(mins / 5)) % 288;
+  // always the five just gone, never the one coming: rounding said TWO O'CLOCK from 1:57:30
+  const slot = Math.floor(mins / 5) % 288;
   const extra = opts.dots ? Math.floor(mins) % 5 : 0;
   const key = slot + ':' + extra;
   if(!ready || key === shown) return;

@@ -137,11 +137,12 @@ Turn the update checks off with **Settings… → Updates** in the Remote and **
 Every release is checkable, and none of it relies on taking this README's word for it:
 
 - **Attested on GitHub.** From v1.4.0, a GitHub Actions workflow ([attest-release.yml](.github/workflows/attest-release.yml)) checks each release's files against `SHA256SUMS.txt` and signs a provenance attestation for them. They're listed on the repo's [Attestations](https://github.com/itsonlyjames/blacklevel/attestations) page; each one names the commit, the tag and the workflow run, and the SHA-256 of every file.
+- **The APK is rebuilt from source.** From v1.4.1, a second workflow ([reproduce-apk.yml](.github/workflows/reproduce-apk.yml)) checks out the release's tag, builds Blacklevel Home on a GitHub runner with the same pinned toolchain, and compares it with the published APK. Only the signature may differ, and the published APK must carry the release certificate. When both hold, it attests the APK, so the attestation says it was built from that source.
 - **Recorded in a public log.** Each attestation is also written to [Sigstore](https://www.sigstore.dev)'s public transparency log, which can't be edited afterwards, so a release can't be quietly re-attested later. The attestation's Actions run links to its log entry.
 - **Signed by the maintainer.** In releases after 1.4.1, the tag and `SHA256SUMS.txt` are signed with the key in [docs/allowed_signers](docs/allowed_signers), and GitHub marks the tag as Verified.
 - **Signed apps.** The Mac app is signed with a Developer ID and notarised by Apple; the APK is always signed with the same certificate, so Android only installs updates from it.
 
-What an attestation proves: the files are exactly the ones this repo's release published. What it doesn't: that they were built in CI. The Mac app needs signing and notarising on the maintainer's Mac, so both apps are built there.
+What this proves: the files are exactly the ones this repo's release published, and the APK was built from the tagged source. What it doesn't: the Mac app is signed and notarised on the maintainer's Mac, and rebuilding it byte for byte depends on the exact Xcode version, so it isn't rebuilt in CI. Its Developer ID signature and Apple's notarisation tie it to the maintainer instead. Signing keys never leave that Mac, so a compromised workflow could at worst publish a misleading attestation, never a signed app or update.
 
 ### Check a download
 
@@ -160,7 +161,7 @@ ssh-keygen -Y verify -f allowed_signers -I blacklevel -n file -s SHA256SUMS.txt.
 
 The same key signs release tags (in a clone, `git -c gpg.ssh.allowedSignersFile=docs/allowed_signers tag -v <tag>`, from the same releases). The APK is signed with a certificate whose SHA-256 is `2b2bf7edf53bd0d90f68f0c7825a7e14bb3d2de113897b6e35c1ab02868fcdcc`; `apksigner verify --print-certs BlacklevelHome-<version>.apk` should show it. For the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
 
-From v1.4.0, each release's files also carry a GitHub attestation: with the [GitHub CLI](https://cli.github.com), run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. It confirms the file is the one published on this repo's release; the apps themselves are built and notarised locally, not in CI.
+From v1.4.0, each release's files also carry a GitHub attestation: with the [GitHub CLI](https://cli.github.com), run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. To check the APK was rebuilt from source (from v1.4.1), add `--signer-workflow itsonlyjames/blacklevel/.github/workflows/reproduce-apk.yml`.
 
 ## Documentation
 

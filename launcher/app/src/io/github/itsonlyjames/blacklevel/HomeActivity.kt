@@ -114,10 +114,28 @@ class HomeActivity : Activity() {
         }
     }
 
+    // Pressing Home on Home pauses and resumes it to hand over the intent, without it ever leaving the screen.
+    // Only a real return (Home was stopped) reloads the page and plays the entrance; Home on Home goes back
+    // to the first app in place.
+    private var left = true
+    private var homePressed = false
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        homePressed = true
+    }
+
+    override fun onStop() {
+        left = true
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         // installs/uninstalls and focus reset when coming back home
-        web.evaluateJavascript("window.refresh && refresh()", null)
+        if (left) web.evaluateJavascript("window.refresh && refresh()", null)
+        else if (homePressed) web.evaluateJavascript("window.home && home()", null)
+        left = false; homePressed = false
         watchSessions()
     }
 

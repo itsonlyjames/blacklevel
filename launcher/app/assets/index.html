@@ -525,6 +525,11 @@ window.refresh = () => {
   icons = {}; apps = arrange(JSON.parse(B.apps())); build(); ai=0; ii=0; row=0; scroll=0; showPanel(false); enter(); wake();
   checkUpdate();
 };
+// called by the app when Home is pressed while already home: back to the first app, without reloading or re-entering
+window.home = () => {
+  clearTimeout(hold); hold = null; if(moving) endMove(false);
+  ai=0; ii=0; row=0; showPanel(false); render(); wake();
+};
 applyPrefs();
 document.fonts.ready.then(()=>{ build(); enter(); wake(); checkUpdate(); });
 </script>

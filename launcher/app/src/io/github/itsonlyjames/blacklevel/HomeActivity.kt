@@ -182,13 +182,25 @@ class HomeActivity : Activity() {
     // The playing session, else a paused one; a stopped session (Spotify keeps one after you leave it) shows nothing.
     private fun pushPlaying(force: Boolean = false) {
         val live = controllers.filter { c ->
-            c.playbackState?.state in SHOWING && c.metadata?.let { title(it) }?.isNotBlank() == true
+            c.packageName !in inputPlayers &&
+                c.playbackState?.state in SHOWING && c.metadata?.let { title(it) }?.isNotBlank() == true
         }
         val c = live.firstOrNull { it.playbackState?.state != PlaybackState.STATE_PAUSED } ?: live.firstOrNull()
         val next = c?.let { nowPlaying(it).toString() } ?: "null"
         if (next == playing && !force) return
         playing = next
         web.evaluateJavascript("window.nowPlaying && nowPlaying($next)", null)
+    }
+
+    // The app that shows HDMI inputs and live TV names its session after the input ("HDMI 2"), and only
+    // plays while it's on screen, so its session is never what's playing behind Home. That's the app that
+    // opens an input for us, and on Sony TVs com.sony.dtv.tvx.
+    private val inputPlayers by lazy {
+        val ids = getSystemService(TvInputManager::class.java)?.tvInputList?.map { it.id } ?: emptyList()
+        ids.flatMap { id ->
+            packageManager.queryIntentActivities(Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(id)), 0)
+                .map { it.activityInfo.packageName }
+        }.toSet() + "com.sony.dtv.tvx"
     }
 
     private fun title(m: MediaMetadata) =

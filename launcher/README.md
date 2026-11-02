@@ -47,7 +47,7 @@ adb shell cmd package set-home-activity --user 0 io.github.itsonlyjames.blacklev
 adb shell cmd role add-role-holder --user 0 android.app.role.HOME io.github.itsonlyjames.blacklevel
 ```
 
-Verified on the A80J on 30 October 2026 with the earlier build (package `tv.hijacking.home`). Home opened Blacklevel Home from YouTube, Plex, Netflix, TV Settings and the SHIELD input. It still did after a minute and after a reboot (the TV boots to its last input, as normal; Home then opens Blacklevel Home). Back on the home screen stays put. Opening apps, inputs and Settings from it all worked. Screenshots: `design/tv/home-from-*.png`, `design/tv/home-after-reboot.png`.
+Verified on the A80J on 30 October 2026 with the earlier build (package `tv.hijacking.home`). Home opened Blacklevel Home from YouTube, Plex, Netflix, TV Settings and the SHIELD input. It still did after a minute and after a reboot (the TV boots to its last input, as normal; Home then opens Blacklevel Home). Back on the home screen stays put. Opening apps, inputs and Settings from it all worked.
 
 ### Current state of the TV
 

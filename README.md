@@ -2,7 +2,7 @@
 
 **Take your Sony TV back. It's just a TV.**
 
-Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a dark, typographic home screen with no ads or recommendation rows, and a native macOS menu bar remote. No accounts, no cloud, no third-party code. Everything talks to the TV over your local network; the only request that leaves it is a once-a-day check of this repo's Releases for updates, which you can turn off.
+Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a dark, typographic home screen with no ads or recommendation rows, and a native macOS menu bar remote. No accounts, no cloud, no third-party code. Everything talks to the TV over your local network. The only internet service either app contacts is GitHub, to check this repo's Releases for updates, which you can turn off. [What talks to what](#what-talks-to-what) has the details.
 
 <p align="center">
   <img src="docs/images/social-hero.png" alt="Blacklevel Home on a TV, with the Blacklevel Remote open from the Mac menu bar" width="100%">
@@ -31,9 +31,14 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
 
 Both parts are independent. Use either, or both.
 
+To check a download yourself, put it next to the release's `SHA256SUMS.txt` and run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`; for the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
+
 ---
 
-## Prompt your agent
+<a name="prompt-your-agent"></a>
+<p align="center">
+  <img src="docs/images/prompt-agent.png" alt="Prompt your agent" width="100%">
+</p>
 
 Rather not do this by hand? Copy a prompt into a coding agent that can run commands on your Mac (Claude Code, Codex, Cursor and the like). Each one tells the agent to explain what it's about to do and wait for your go-ahead before it changes your TV.
 
@@ -73,8 +78,8 @@ Google TV packages, list each one, say what it does, show me how to undo it (the
 ```text
 Review https://github.com/itsonlyjames/blacklevel before I install it, and give me a
 plain-English verdict. Read the source, not just the README. Check: every network
-request each app makes and where it goes (the README says only a daily GitHub update
-check leaves the network); which Android permissions Home asks for and why; how the
+request each app makes and where it goes (the README says GitHub's update check is the only
+internet request); which Android permissions Home asks for and why; how the
 Remote stores the TV's pre-shared key; what the install steps change on the TV and
 whether launcher/README.md's revert steps undo all of it; and that the release
 downloads match SHA256SUMS.txt. Flag anything that doesn't match what the README
@@ -108,6 +113,21 @@ work out the likely cause, and run only read-only checks (adb devices, the Remot
 </details>
 
 ---
+
+## What talks to what
+
+On the internet, the only service either app contacts is GitHub: the update check, and the download when you choose to update. Everything else stays on your local network.
+
+| App | Talks to | How |
+|---|---|---|
+| Remote | The TV | Sony's BRAVIA REST API and IRCC over plain HTTP, with the pre-shared key in an `X-Auth-PSK` header ([why that matters](docs/tv-setup.md#2-ip-control-and-pre-shared-key-for-blacklevel-remote)) |
+| Remote | Your network | SSDP multicast to find the TV; a Wake-on-LAN broadcast to wake it |
+| Remote | The TV, optional | ADB on port 5555, for remote keys and screenshots, only if `adb` is installed and network debugging is on |
+| Remote | GitHub | Shortly after it opens, then every 24 hours while it runs |
+| Home | The TV itself | Sony's local API at `127.0.0.1`, without a key, for the names of HDMI-CEC devices |
+| Home | GitHub | When the home screen opens or comes back to the front, if it hasn't checked in the last 24 hours |
+
+Turn the update checks off with **Settings… → Updates** in the Remote and **Customise → Updates → Updates** on Home. Either updater checks the SHA-256 of the download against the release's `SHA256SUMS.txt` and refuses to install if that file is missing or doesn't match.
 
 ## Compatibility
 

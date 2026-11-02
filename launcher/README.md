@@ -31,6 +31,12 @@ The script runs aapt2 → kotlinc → R8 → zipalign → apksigner directly, no
 
 Set up network debugging first ([TV setup](../docs/tv-setup.md#3-network-debugging-for-blacklevel-home-optional-for-the-remote)).
 
+What install changes on the TV, before you run anything:
+
+- Blacklevel Home becomes the home screen and holder of the HOME role.
+- It's allowed to install its own updates (`appops … REQUEST_INSTALL_PACKAGES`) and to read what's playing as a notification listener (`allow_listener`).
+- On Google TV models like the A80J, two Google packages are disabled with `pm disable-user`: `com.google.android.apps.tv.launcherx`, Google TV's home screen, which otherwise keeps taking the Home button; and `com.google.android.tungsten.setupwraith`, Google's setup and recovery app, which Home falls back to once that launcher is off and which shows a blank screen. Disabled, not removed: [Revert](#revert-to-the-stock-home-screen) switches both back on, and so should you [before a factory reset or a major Google TV update](#before-a-factory-reset-or-a-major-google-tv-update).
+
 ```bash
 adb connect <tv-ip>:5555
 adb install -r build/home.apk
@@ -56,7 +62,7 @@ Verified on the A80J on 30 October 2026 with the earlier build (package `tv.hija
 |---|---|
 | `com.google.android.apps.tv.launcherx` (Google TV home) | disabled |
 | `com.google.android.tungsten.setupwraith` (Google TV setup and recovery) | disabled |
-| `tv.samba.ssm` (Samba TV) | disabled (separately, for privacy) |
+| `tv.samba.ssm` (Samba TV) | disabled by hand, as a separate privacy change; not part of Blacklevel's install, and the revert leaves it off (`adb shell pm enable tv.samba.ssm` turns it back on) |
 | `com.sony.dtv.homekit`, `com.sonypicturescore`, `com.apple.atve.sony.appletv`, `com.sony.dtv.kenhchonloc`, `com.sony.dtv.b2b.softap` | disabled from the factory; leave them |
 | `io.github.itsonlyjames.blacklevel` (Blacklevel Home) | installed 31 October 2026; home screen and HOME role holder |
 | `tv.hijacking.home` (Blacklevel Home, earlier package name) | removed |
@@ -74,7 +80,7 @@ Builds before 31 October 2026 used the package `tv.hijacking.home`, which Androi
 
 ## Updates
 
-Once a day Blacklevel Home asks GitHub for the latest release. When there's a newer one, **Customise** on the home screen says *Update available*. Open it (it opens on its **Updates** section), go to the **Update** row and press OK: it downloads the APK, checks it against `SHA256SUMS.txt` and hands it to Android, which asks you to confirm. Press ◀ then OK on **Update** (the dialog starts on Cancel). Turn the daily check off with **Customise → Updates → Updates**; on the **Version** row, OK checks now. This is the only request Blacklevel Home makes outside your network.
+When the home screen opens or comes back to the front, Blacklevel Home asks GitHub for the latest release, unless it already has in the last 24 hours (it also looks every hour while left open, with the same 24-hour limit). When there's a newer one, **Customise** on the home screen says *Update available*. Open it (it opens on its **Updates** section), go to the **Update** row and press OK: it downloads the APK, verifies its SHA-256 against `SHA256SUMS.txt`, refusing to install if that file is missing or doesn't match, and hands it to Android, which asks you to confirm. Press ◀ then OK on **Update** (the dialog starts on Cancel). Turn the automatic check off with **Customise → Updates → Updates → Off**; on the **Version** row, OK checks now. GitHub is the only internet service Blacklevel Home contacts; on the TV it also asks Sony's local API at `127.0.0.1` for HDMI device names.
 
 Android only lets an app install updates once you've allowed it, which is what the `appops` line in [Install](#install) does. Without it, pressing OK opens the TV's **Install unknown apps** list. On the A80J that list doesn't help: `adb install` puts the app in both of the TV's users (0 and Sony's second profile, 10), and the toggle there allows the user-10 copy, not the one you see. Run the `appops` line instead.
 
@@ -105,6 +111,18 @@ adb uninstall tv.hijacking.home                      # only if a pre-rename buil
 ```
 
 Then press Home to check it opens Google TV.
+
+### Finish cleanup
+
+The commands above put the home screen back. To leave the TV as it was before Blacklevel:
+
+1. **Check Google TV holds the home role**: `adb shell cmd role get-role-holders --user 0 android.app.role.HOME` should print `com.google.android.apps.tv.launcherx`.
+2. **Check now-playing access is gone**: `adb shell settings get secure enabled_notification_listeners` shouldn't list `io.github.itsonlyjames.blacklevel`. Android drops it when the app is uninstalled; if it's still there, run `adb shell cmd notification disallow_listener io.github.itsonlyjames.blacklevel/io.github.itsonlyjames.blacklevel.NowPlayingListener`. The install-updates permission goes with the app.
+3. **Revoke ADB authorisations**: in **Settings → System → Developer options**, choose **Revoke USB debugging authorisations** if your TV lists it, so no computer stays trusted. Do this and the next step last, since they end your `adb` session.
+4. **Turn off ADB debugging** (**USB debugging** on some models), or all of **Developer options**.
+5. **Press Home** once more and check Google TV opens.
+
+Samba TV, if you disabled it yourself, stays disabled; see [Current state of the TV](#current-state-of-the-tv).
 
 ## Customise
 

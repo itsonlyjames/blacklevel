@@ -14,10 +14,8 @@ Reading the TV's state (power, volume, inputs) works without a key. Changing any
 
 1. **Settings → Network & Internet → Home network → IP control**.
 2. Set **Authentication** to **Normal and Pre-Shared Key**.
-3. Set **Pre-Shared Key** to a password of your choice. Anyone on your network with this key can control the TV, so don't reuse a password from elsewhere.
+3. Set **Pre-Shared Key** to a new key used only for this TV, not a password you use anywhere else. Sony's API takes it in an `X-Auth-PSK` header over plain HTTP, not HTTPS, so anyone who can see your network's traffic can read it, and anyone with it can control the TV. Only use IP control on a network you trust (not shared or guest Wi-Fi).
 4. Turn on **Remote start** in the same menu, so the TV can be woken from standby.
-
-The key travels in plain HTTP on your local network. That's how Sony's API works; keep the TV on a network you trust.
 
 ## 3. Network debugging (for Blacklevel Home, optional for the Remote)
 

@@ -22,7 +22,7 @@ A TV icon appears in the menu bar (filled when the TV is on). The first time it 
 Then open **Settings…**:
 
 1. On first launch the remote searches the network and picks the first TV it finds. To choose another, enter its address or click **Find**.
-2. Enter the TV's pre-shared key ([how to set one](../docs/tv-setup.md#2-ip-control-and-pre-shared-key-for-blacklevel-remote)), then **Save Key** and **Test Connection**.
+2. Enter the TV's pre-shared key ([how to set one](../docs/tv-setup.md#2-ip-control-and-pre-shared-key-for-blacklevel-remote): make it unique, since it's sent to the TV over plain HTTP), then **Save Key** and **Test Connection**.
 3. Click **Detect** next to the MAC address so the remote can wake the TV from standby.
 
 To start it at login, add the app under **System Settings → General → Login Items**.
@@ -31,7 +31,7 @@ The key is stored in your login keychain. The TV's address and MAC address are k
 
 ## Updates
 
-Once a day the remote asks GitHub for the latest release. When there's a newer one, the menu shows **Version x.y.z is available** with an **Update** button. It downloads the release, checks it against `SHA256SUMS.txt` and checks it's signed by the same Developer ID, then swaps it in and reopens. Turn the check off, or check now, under **Settings… → Updates**. This is the only request the remote makes outside your network.
+Shortly after it opens, and then every 24 hours while it runs, the remote asks GitHub for the latest release. When there's a newer one, the menu shows **Version x.y.z is available** with an **Update** button. It downloads the release, verifies its SHA-256 against `SHA256SUMS.txt` and refuses to install if that file is missing or doesn't match, checks it's signed by the same Developer ID, then swaps it in and reopens. Turn the automatic check off (**Check for updates daily**), or check now, under **Settings… → Updates**. GitHub is the only internet service the remote contacts; everything else is the TV on your local network (see [What talks to what](../README.md#what-talks-to-what)).
 
 Keep the app in Applications: macOS runs apps opened straight from Downloads from a temporary copy, which can't replace itself. A build you made yourself isn't signed with the release's Developer ID, so **Update** opens the release page instead.
 

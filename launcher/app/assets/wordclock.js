@@ -25,9 +25,9 @@ const ROWS = [
 const W = 11, FLAT = ROWS.join('');
 const HOURS = ["TWELVE","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN"];
 const MINS = {5:["FIVE"],10:["TEN"],15:["QUARTER"],20:["TWENTY"],25:["TWENTY","FIVE"],30:["HALF"]};
-// lit lightness, halo strength, pool strength; Bright is as near SDR white as champagne gets
 const native = !!(window.Launcher && Launcher.clockShow);
-const LEVELS = {soft:['84%',.3,.035], medium:['94%',.45,.05], bright:['99%',.6,.065]};
+// lit lightness for Soft / Medium / Bright; Bright is as near SDR white as champagne gets
+const LEVELS = {soft:'84%', medium:'94%', bright:'99%'};
 
 // slot: five-minute steps since midnight (0–287); midnight and noon are both TWELVE O'CLOCK
 function words(slot){
@@ -107,8 +107,7 @@ function hide(){
 }
 function set(o){
   Object.assign(opts, o);
-  const [l, a, p] = LEVELS[opts.level] || LEVELS.medium;
-  el.style.setProperty('--wc-l', l); el.style.setProperty('--wc-a', a); el.style.setProperty('--wc-p', p);
+  el.style.setProperty('--wc-l', LEVELS[opts.level] || LEVELS.medium);
   el.classList.toggle('dots', !!opts.dots);
   if(timer){ shown = ''; render(); }
 }

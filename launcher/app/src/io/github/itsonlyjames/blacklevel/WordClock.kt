@@ -6,9 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.PorterDuff
-import android.graphics.RadialGradient
 import android.graphics.Rect
-import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
@@ -21,9 +19,10 @@ import org.json.JSONObject
 import kotlin.random.Random
 
 // The word clock's letters, drawn natively. The page decides what's lit and when (assets/wordclock.js);
-// this draws it on a surface sized to the panel, over the page. Android draws the rest of Home at 1080p and
-// the TV scales that up 2×, which leaves thin letters soft; a surface at the panel's own size reaches it at
-// full 4K. The page still draws the dark background and fades Home out underneath.
+// this draws it on a surface over the page, which still draws the dark background and fades Home out underneath.
+// The surface is 1080p like the rest of Android. A 4K one was sharper, but on the A80J any full-panel 4K layer
+// switches the TV's display hardware into a mode it doesn't leave until a reboot, which shrinks HDMI inputs into
+// the top-left quarter of the screen. Lit letters have no glow, since a glow scaled up 2× reads as soft focus.
 // It only draws while something is fading; between changes the last frame stays up.
 class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHolder.Callback, Choreographer.FrameCallback {
     private val view = SurfaceView(activity).apply {
@@ -33,12 +32,10 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
         visibility = View.GONE
     }
 
-    // the panel's own size; the layout is in the page's 1920×1080 units, times s
-    @Suppress("DEPRECATION")
-    private val mode = activity.windowManager.defaultDisplay.mode
-    private val w = mode.physicalWidth
-    private val h = mode.physicalHeight
-    private val s = w / 1920f
+    // the page's own 1920×1080 units; never the panel's 4K (see above)
+    private val w = 1920
+    private val h = 1080
+    private val s = 1f
     private val cw = 92 * s
     private val ch = 84 * s
 
@@ -55,23 +52,12 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
     }
     private val lit = Paint(off).apply { typeface = font(440) }
     private val capHeight = Rect().also { lit.getTextBounds("H", 0, 1, it) }.height()
-    private val poolRadius = 75 * s
-    private val pool = Paint(Paint.ANTI_ALIAS_FLAG)
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    // lit colour, halo strength, pool strength (the page's Soft / Medium / Bright)
-    private class Style(val color: Int, val glow: Float, val pool: Float)
-    private val styles = mapOf(
-        "soft" to Style(0xD4C9B5, .3f, .05f),
-        "medium" to Style(0xF5EAD5, .45f, .085f),
-        "bright" to Style(0xFFFBE6, .6f, .11f),
-    )
+    // lit colour for the page's Soft / Medium / Bright
+    private val styles = mapOf("soft" to 0xD4C9B5, "medium" to 0xF5EAD5, "bright" to 0xFFFBE6)
     private var style = styles.getValue("medium")
-    private fun setStyle(name: String) {
-        style = styles[name] ?: styles.getValue("medium")
-        pool.shader = RadialGradient(0f, 0f, poolRadius, rgba(0xC89257, style.pool), Color.TRANSPARENT, Shader.TileMode.CLAMP)
-    }
-    init { setStyle("medium") }
+    private fun setStyle(name: String) { style = styles[name] ?: styles.getValue("medium") }
 
     // each letter and dot fades from one level to another (0 unlit … 1 lit), starting at a set time
     private class Fade(var from: Float = 0f, var to: Float = 0f, var start: Double = 0.0, var ms: Double) {
@@ -177,26 +163,13 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
         val cx = { i: Int -> x0 + (i % 11 + .5f) * cw }
         val cy = { i: Int -> y0 + (i / 11 + .5f) * ch }
 
-        // a faint pool of warm light behind each lit letter, under all the letters
-        v.forEachIndexed { i, a ->
-            if (a <= 0f) return@forEachIndexed
-            pool.alpha = (255 * a * m).toInt()
-            c.save(); c.translate(cx(i), cy(i)); c.drawCircle(0f, 0f, poolRadius, pool); c.restore()
-        }
-        // unlit letters fade out as lit ones fade in over them: a soft warm glow, a tight halo, a crisp edge.
-        // At 4K the edge stays sharp under the glow, so it can be the full Lantern glow
-        val g = style.glow
+        // unlit letters fade out as lit ones fade in over them
         v.forEachIndexed { i, a ->
             val glyph = letters[i].toString(); val x = cx(i); val y = cy(i) + capHeight / 2f
             if (a < 1f) { off.alpha = (255 * m * (1 - a)).toInt(); c.drawText(glyph, x, y, off) }
             if (a <= 0f) return@forEachIndexed
-            val k = a * m
-            lit.color = rgba(style.color, k)
-            lit.setShadowLayer(22 * s, 0f, 0f, rgba(0xE1AC6E, g * k)); c.drawText(glyph, x, y, lit)
-            lit.setShadowLayer(6 * s, 0f, 0f, rgba(0xE9BB82, g * .7f * k)); c.drawText(glyph, x, y, lit)
-            lit.setShadowLayer(1 * s, 0f, 0f, rgba(0xFFF7E2, .9f * k)); c.drawText(glyph, x, y, lit)
+            lit.color = rgba(style, a * m); c.drawText(glyph, x, y, lit)
         }
-        lit.clearShadowLayer()
 
         // minute dots: one per minute past the five, below the grid
         if (showDots) {

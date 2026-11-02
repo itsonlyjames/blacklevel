@@ -1,10 +1,9 @@
 /* Word clock (Lantern): the time in lit words on a fixed grid of letters. Unlit letters are barely there;
-   lit ones are a warm champagne with a soft glow and a faint pool of light behind them. Only colour, weight
-   and opacity animate, and only when the words change.
-   The TV draws Android at 1080p and scales it up 2×, so lit letters get heavier strokes and a tight halo
-   (a wide blur reads as soft focus there); the wide bloom stays faint. */
+   lit ones are a warm champagne. Only colour, weight and opacity animate, and only when the words change.
+   The TV draws Android at 1080p and scales it up 2×, so lit letters get heavier strokes and no glow
+   (a glow scaled up reads as soft focus). In the app WordClock.kt draws the letters the same way. */
 #wordclock{position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:oklch(10% .005 60);
-  --lit:oklch(var(--wc-l,97%) .03 84);--glow:oklch(82% .09 72 / var(--wc-a,.45));--pool:oklch(70% .1 68 / var(--wc-p,.05));
+  --lit:oklch(var(--wc-l,97%) .03 84);
   opacity:0;visibility:hidden;transition:opacity .5s var(--ease),visibility 0s .5s}
 body.wordclock #wordclock{opacity:1;visibility:visible;transition:opacity 2s ease-in-out}
 body.wordclock #stage{opacity:0;transition:opacity 2s ease-in-out}
@@ -13,13 +12,9 @@ body.wordclock #stage{opacity:0;transition:opacity 2s ease-in-out}
 #wordclock.native .wc{display:none}
 #wordclock .grid{display:grid;grid-template-columns:repeat(11,92px);grid-auto-rows:84px}
 #wordclock .grid span{position:relative;display:grid;place-items:center;font:300 44px Text;color:oklch(17.5% .006 62);
-  transition:color 2.4s ease-in-out var(--d,0s),text-shadow 2.4s ease-in-out var(--d,0s),font-weight 2.4s ease-in-out var(--d,0s)}
-#wordclock .grid span::after{content:"";position:absolute;inset:-40%;border-radius:50%;
-  background:radial-gradient(closest-side,var(--pool),transparent);opacity:0;transition:opacity 2.4s ease-in-out var(--d,0s)}
-#wordclock .grid span.on{color:var(--lit);font-weight:440;
-  text-shadow:0 0 1px oklch(98% .03 84 / .9),0 0 6px var(--glow),0 0 28px oklch(78% .1 70 / calc(var(--wc-a,.45) * .4))}
-#wordclock .grid span.on::after{opacity:1}
-#wordclock .grid.reset span,#wordclock .grid.reset span::after{transition:none}
+  transition:color 2.4s ease-in-out var(--d,0s),font-weight 2.4s ease-in-out var(--d,0s)}
+#wordclock .grid span.on{color:var(--lit);font-weight:440}
+#wordclock .grid.reset span{transition:none}
 /* minute dots: one for each minute past the five, small and below the grid */
 #wordclock .dots{position:absolute;left:50%;bottom:-56px;display:flex;gap:18px;transform:translateX(-50%)}
 #wordclock .dots i{width:7px;height:7px;border-radius:50%;background:oklch(17.5% .006 62);transition:background 1.2s ease-in-out}

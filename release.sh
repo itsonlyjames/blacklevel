@@ -47,6 +47,10 @@ xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1 || fail "
 SIGNKEY=$(git config user.signingkey || true)
 [[ $(git config gpg.format) == ssh && -f $SIGNKEY ]] || fail "Set git's gpg.format to ssh and user.signingkey to the release key's .pub"
 grep -qF "$(cut -d' ' -f2 "$SIGNKEY")" "$SIGNERS" || fail "The signing key isn't in $SIGNERS"
+# CI rebuilds the APK with the toolchain pinned in its workflow and must get the same bytes.
+WANT=$(sed -nE 's/^ *KOTLIN_VERSION: *([0-9.]+).*/\1/p' .github/workflows/reproduce-apk.yml)
+HAVE=$(kotlinc -version 2>&1 | sed -nE 's/.*kotlinc-jvm ([0-9.]+).*/\1/p')
+[[ -n $WANT && $HAVE == "$WANT" ]] || fail "kotlinc is $HAVE but reproduce-apk.yml pins $WANT: CI's rebuild wouldn't match"
 if (( !DRY )); then
   [[ -z $(git status --porcelain --untracked-files=no) ]] || fail "Commit or stash your changes first"
   gh auth status >/dev/null 2>&1 || fail "gh isn't logged in"

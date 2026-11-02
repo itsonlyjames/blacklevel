@@ -1,0 +1,108 @@
+# Rebuild Blacklevel Home from source and check it matches the release.
+#
+# release.sh builds and signs the APK on the maintainer's Mac, so the signing key never leaves it.
+# This workflow checks out the release's tag, builds the APK on a GitHub runner with the same
+# pinned toolchain (unsigned: no keys here), and compares every file in it with the published
+# APK, ignoring only META-INF (the signature). It also checks the published APK is signed with
+# the known release certificate. If both hold, it attests the published APK.
+#
+# What that proves: the released APK was built from the source at that tag, by the maintainer's key.
+# The Mac app isn't covered: it's signed with a Developer ID and notarised by Apple instead.
+#
+# Runs when a release is published. To check an existing release:
+#   gh workflow run reproduce-apk.yml -f tag=v1.4.1
+
+name: Reproduce APK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to check (e.g. v1.4.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: reproduce-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  # The toolchain release.sh builds with; release.sh refuses to release if the Mac's kotlinc differs.
+  KOTLIN_VERSION: 2.4.21
+  KOTLIN_SHA256: 7cc140e76daf416a0424a5557f99afd7ca89ebd463ea1101261e3e01c33e75cd
+  BUILD_TOOLS: 34.0.0
+  PLATFORM: android-34
+  # SHA-256 of the certificate that signs every Blacklevel Home release
+  RELEASE_CERT: 2b2bf7edf53bd0d90f68f0c7825a7e14bb3d2de113897b6e35c1ab02868fcdcc
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate tag
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag must look like v1.2.3"
+            exit 1
+          fi
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Install the toolchain
+        run: |
+          curl -fsSL -o kotlin.zip "https://github.com/JetBrains/kotlin/releases/download/v$KOTLIN_VERSION/kotlin-compiler-$KOTLIN_VERSION.zip"
+          echo "$KOTLIN_SHA256  kotlin.zip" | sha256sum -c -
+          unzip -q kotlin.zip -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "build-tools;$BUILD_TOOLS" "platforms;$PLATFORM" >/dev/null
+
+      - name: Build from source
+        run: |
+          kotlinc -version
+          launcher/build.sh
+
+      - name: Download the release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir release
+          gh release download "$TAG" --repo "$REPO" --dir release --pattern "BlacklevelHome-$VERSION.apk"
+
+      - name: Compare
+        run: |
+          APK="release/BlacklevelHome-$VERSION.apk"
+          BT="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
+          cert=$("$BT/apksigner" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          [ "$cert" = "$RELEASE_CERT" ] || { echo "::error::Release APK is signed by $cert, not the release certificate"; exit 1; }
+          unzip -q "$APK" -d published
+          unzip -q launcher/build/home.apk -d rebuilt
+          if ! diff -r -x META-INF published rebuilt; then
+            echo "::error::The release APK doesn't match a build of $TAG"
+            exit 1
+          fi
+          echo "Every file outside META-INF matches a build of $TAG:"
+          (cd published && find . -path ./META-INF -prune -o -type f -print0 | sort -z | xargs -0 sha256sum)
+
+      - name: Attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/BlacklevelHome-${{ env.VERSION }}.apk

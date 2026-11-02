@@ -29,6 +29,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Base64
 import android.view.KeyEvent
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.widget.FrameLayout
@@ -409,6 +410,14 @@ class HomeActivity : Activity() {
 
         @JavascriptInterface
         fun clockHide() = runOnUiThread { clock.hide() }
+
+        // Customise → Idle → Google screensaver: while Home is on screen, keep Android's screensaver (ambient
+        // mode) from starting over it. The flag only holds while this window is showing, so other apps keep theirs.
+        @JavascriptInterface
+        fun keepAwake(on: Boolean) = runOnUiThread {
+            if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
 
         // Updates come from GitHub Releases, the only request that leaves the local network.
         @JavascriptInterface

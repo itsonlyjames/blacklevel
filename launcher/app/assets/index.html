@@ -237,6 +237,7 @@ const OPTS = [
   {key:"dim", label:"After", choices:[[1,"1 minute"],[5,"5 minutes"],[15,"15 minutes"]]},
   {key:"dots", label:"Minute dots", choices:[["off","Off"],["on","On"]]},
   {key:"level", label:"Brightness", choices:[["medium","Medium"],["soft","Soft"],["bright","Bright"]]},
+  {key:"saver", label:"Google screensaver", choices:[["off","Never on Home"],["on","As set on the TV"]]},
   {key:"playing", label:"Now playing", choices:[["on","On"],["off","Off"]]},
   {key:"updates", label:"Updates", choices:[["daily","Check daily"],["off","Off"]]},
 ];
@@ -256,6 +257,7 @@ function applyPrefs(){
   document.documentElement.style.setProperty('--icon-radius', {square:'0',rounded:'24%',circle:'50%'}[pref('shape')]);
   document.documentElement.style.setProperty('--glow', pref('glow'));
   WordClock.set({dots:pref('dots')==='on', level:pref('level')});
+  B.keepAwake && B.keepAwake(pref('saver')==='off');
   tick(); light();
 }
 
@@ -445,7 +447,7 @@ const TABS = [
   {label:"Icons", keys:["shape","fade"]},
   {label:"Atmosphere", keys:["light","glow"]},
   {label:"Screen", keys:["layout","clock","playing"]},
-  {label:"Idle", keys:["idle","dim","dots","level","now"]},
+  {label:"Idle", keys:["idle","dim","dots","level","saver","now"]},
   {label:"Updates", keys:["updates","version"]},
 ];
 const tabsEl = document.getElementById('tabs'), optsEl = document.getElementById('opts'), phint = document.getElementById('phint');

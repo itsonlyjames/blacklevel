@@ -7,6 +7,7 @@ What changed in each version of Blacklevel Home (the TV launcher) and Blacklevel
 ### Blacklevel Home (TV)
 
 - **Added:** a word clock for when the home screen's left alone. The time to the nearest five minutes in warm lit words on a fixed grid of letters ("IT IS TWENTY FIVE TO SEVEN"), the unlit letters barely there; words fade across slowly when the time changes. Any button brings the home screen back as you left it, and that press does nothing else. Set it up in **Customise → Idle**: dim or word clock, after 1, 5 or 15 minutes, minute dots, brightness, and **Show now**.
+- **Added:** Google's screensaver (ambient mode) no longer starts over the home screen, so the word clock or the dim stays up. **Customise → Idle → Google screensaver → As set on the TV** brings it back. Other apps keep it either way.
 - **Added:** Tiles, a third way to show the app row (**Customise → Apps → Show as**): each app's icon as a rounded square with its name in small capitals beneath, the focused one lifted.
 - **Added:** Atmosphere. The room behind the home screen takes on a soft light from the app you're on, and the focus line takes the app's colour. Set the **Light** and its **Strength** in **Customise → Atmosphere**.
 - **Changed:** Home and Customise, and the names in the icons' headline, now take turns instead of crossfading, so their words never sit over each other. The focused app name steps forward a touch.

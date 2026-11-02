@@ -125,6 +125,19 @@ body.icons #headline{display:block;position:absolute;left:128px;top:420px;width:
 #headline span.on{opacity:1;transform:none;transition:opacity .35s var(--ease),transform .5s var(--ease),color .3s}
 body.away #headline{opacity:.4}
 body.moving #headline span{color:var(--accent)}
+/* tiles: the icons as rounded squares, each named in small capitals beneath, so the row needs no headline.
+   The focused tile lifts and its label comes up to full strength. The vertical layout keeps its icon column. */
+body.tiles:not(.vertical) #headline{display:none}
+body.tiles:not(.vertical) #apps{top:540px;height:300px}
+body.tiles:not(.vertical) #track{gap:40px;padding-top:16px}
+body.tiles:not(.vertical) .app{display:flex;flex-direction:column;align-items:center}
+body.tiles:not(.vertical) .app img,body.tiles:not(.vertical) .app .ph{width:136px;height:136px;border-radius:30%;transition:filter .5s var(--ease),transform .25s var(--ease)}
+body.tiles:not(.vertical) .app .ph{line-height:136px}
+body.tiles:not(.vertical) .app.sel img,body.tiles:not(.vertical) .app.sel .ph{transform:translateY(-14px)}
+body.tiles:not(.vertical) .app .nm{display:block;margin-top:22px;font:600 20px/1 Text;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;color:var(--dim);transition:color .3s}
+body.tiles:not(.vertical) .app.sel .nm{color:var(--ink)}
+body.tiles:not(.vertical) .app.moving .nm{color:var(--app-accent,var(--accent))}
+body.tiles:not(.vertical) .app::after{align-self:stretch;margin-top:18px}
 /* vertical: one column of icons, the focused app's name set out to the right of its icon */
 body.vertical.icons #headline{display:none}
 body.vertical.icons #apps{top:82px;height:auto}
@@ -170,7 +183,7 @@ body.pre #stage{visibility:hidden}
 /* reduced motion: nothing slides, grows or lifts; fades, colour, the idle dim and the burn-in drift stay */
 @media (prefers-reduced-motion:reduce){
   #track{transition:none}
-  .app::after,.inp::after,.opt .val::after,.tab span::after,#headline span,#panel h2,.sections,body.icons .app.moving,#np,#np .cover img{transform:none!important}
+  .app::after,.inp::after,.opt .val::after,.tab span::after,#headline span,#panel h2,.sections,body.icons .app.moving,body.tiles .app.sel img,body.tiles .app.sel .ph,#np,#np .cover img{transform:none!important}
   .eq b{animation:none;transform:scaleY(.6)}
   body.vertical.icons .app .nm{transform:translate(0,-55%)!important}
 }
@@ -199,7 +212,7 @@ const B = window.Launcher || {
 // launcher settings, remembered locally; each option's first choice is the default
 const OPTS = [
   {key:"layout", label:"Layout", choices:[["horizontal","Horizontal"],["vertical","Vertical"]]},
-  {key:"view", label:"Show as", choices:[["names","Names"],["icons","Icons"]]},
+  {key:"view", label:"Show as", choices:[["names","Names"],["icons","Icons"],["tiles","Tiles"]]},
   {key:"shape", label:"Shape", choices:[["square","Square"],["rounded","Rounded"],["circle","Circle"]]},
   {key:"fade", label:"Fade others", choices:[["on","On"],["off","Off"]]},
   {key:"order", label:"Order", choices:[["recent","Recently opened"],["custom","Your order"]]},
@@ -221,7 +234,9 @@ const short = l => pref('names')==='full' || l.length <= pref('names') ? l : l.s
 function applyPrefs(){
   document.documentElement.style.setProperty('--app-size', pref('size')+'px');
   document.body.classList.toggle('vertical', pref('layout')==='vertical'); scroll = 0;
-  document.body.classList.toggle('icons', pref('view')==='icons');
+  // tiles are icons with their names beneath, so they take everything the icons do
+  document.body.classList.toggle('icons', pref('view')!=='names');
+  document.body.classList.toggle('tiles', pref('view')==='tiles');
   document.body.classList.toggle('nofade', pref('fade')==='off');
   document.body.classList.toggle('noplaying', pref('playing')==='off');
   document.documentElement.style.setProperty('--icon-radius', {square:'0',rounded:'24%',circle:'50%'}[pref('shape')]);
@@ -275,7 +290,7 @@ const icon = a => {
 };
 const headline = document.getElementById('headline');
 function build(){
-  const v = pref('view')==='icons';
+  const v = pref('view')!=='names';
   track.innerHTML = apps.map(a=>`<div class="app">${v?icon(a):''}<span class="nm">${short(a.label)}</span></div>`).join('');
   headline.innerHTML = v ? apps.map(a=>`<span>${a.label}</span>`).join('') : '';
   inRow.innerHTML = inputs.map(x=>`<div class="inp${x.id==='__customise'?' settings':''}">${x.label}${x.sub?`<small>${x.sub}</small>`:''}</div>`).join('');
@@ -292,7 +307,7 @@ function render(){
     track.style.transform = `translateY(${-scroll}px)`;
     appsEl.classList.toggle('more', track.offsetHeight - scroll > appsEl.clientHeight + 1);
     appsEl.classList.toggle('scrolled', scroll > 0);
-  } else if(pref('view')==='icons'){
+  } else if(pref('view')!=='names'){
     // the contact sheet holds still and only slides once focus nears its right-hand end
     track.style.transform = `translateX(${-Math.max(0, els[ai].offsetLeft - 1100)}px)`;
   } else track.style.transform = `translateX(${-els[ai].offsetLeft}px)`;

@@ -2,6 +2,16 @@
 
 What changed in each version of Blacklevel Home (the TV launcher) and Blacklevel Remote (the Mac menu bar app). The full notes for each release, with downloads and how to update, are on [GitHub Releases](https://github.com/itsonlyjames/blacklevel/releases) and in `release/<version>/NOTES.md`.
 
+## 1.4.2
+
+### Both apps
+
+- **Added:** release tags and `SHA256SUMS.txt` are signed with the key in `docs/allowed_signers`, and the APK is rebuilt from the tag in CI and attested when it matches.
+
+### Blacklevel Remote (Mac)
+
+- **Changed:** screenshot progress and errors show next to the camera button instead of at the top of the menu.
+
 ## 1.4.1
 
 ### Both apps

@@ -34,7 +34,7 @@ Set up network debugging first ([TV setup](../docs/tv-setup.md#3-network-debuggi
 What install changes on the TV, before you run anything:
 
 - Blacklevel Home becomes the home screen and holder of the HOME role.
-- It's allowed to install its own updates (`appops … REQUEST_INSTALL_PACKAGES`) and to read what's playing as a notification listener (`allow_listener`).
+- It's allowed to install its own updates (`appops … REQUEST_INSTALL_PACKAGES`) and to read what's playing as a notification listener (`allow_listener`). Android grants a notification listener more than media: it could read your notifications too. Home only uses it to ask Android for the active media sessions; [NowPlayingListener.kt](app/src/io/github/itsonlyjames/blacklevel/NowPlayingListener.kt) has no notification callbacks and nothing in Home reads notifications.
 - On Google TV models like the A80J, two Google packages are disabled with `pm disable-user`: `com.google.android.apps.tv.launcherx`, Google TV's home screen, which otherwise keeps taking the Home button; and `com.google.android.tungsten.setupwraith`, Google's setup and recovery app, which Home falls back to once that launcher is off and which shows a blank screen. Disabled, not removed: [Revert](#revert-to-the-stock-home-screen) switches both back on, and so should you [before a factory reset or a major Google TV update](#before-a-factory-reset-or-a-major-google-tv-update).
 
 ```bash

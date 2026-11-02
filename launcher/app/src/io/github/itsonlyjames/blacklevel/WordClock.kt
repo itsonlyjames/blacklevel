@@ -8,6 +8,7 @@ import android.graphics.PixelFormat
 import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Choreographer
@@ -24,6 +25,10 @@ import kotlin.random.Random
 // switches the TV's display hardware into a mode it doesn't leave until a reboot, which shrinks HDMI inputs into
 // the top-left quarter of the screen. Lit letters have no glow, since a glow scaled up 2× reads as soft focus.
 // It only draws while something is fading; between changes the last frame stays up.
+// Android builds the surface afresh each time it's shown (it's gone while hidden), which takes a moment and
+// briefly disturbs the window, so the page only shows it once the screen has gone fully dark (wordclock.js).
+// Its first frame is an empty one, and the fade begins once that's on screen, with the words' delays counted
+// from then, so a slow surface never cuts into the fade.
 class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHolder.Callback, Choreographer.FrameCallback {
     private val view = SurfaceView(activity).apply {
         setZOrderOnTop(true)
@@ -65,9 +70,9 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
             val t = ((now - start) / ms).coerceIn(0.0, 1.0).toFloat()
             return from + (to - from) * t * t * (3 - 2 * t) // ease in and out
         }
-        fun go(target: Float, now: Double, delayMs: Double) {
+        fun go(target: Float, now: Double, delayMs: Double, overMs: Double = ms) {
             if (target == to) return
-            from = at(now); to = target; start = now + delayMs
+            from = at(now); to = target; start = now + delayMs; ms = overMs
         }
         fun moving(now: Double) = from != to && now < start + ms
     }
@@ -77,6 +82,9 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
     private var showDots = false
     private val master = Fade(ms = 2000.0)
     private var hiding = false
+    private var waiting = false // shown, but its empty first frame isn't up yet
+    private var committed = false // the window has drawn a frame with the surface in it
+    private var shownAt = 0.0
 
     private var surface: SurfaceHolder? = null
     private var running = false
@@ -99,8 +107,14 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
         fades = Array(rows.length) { Fade(ms = 2400.0) }
         dots.forEach { it.from = 0f; it.to = 0f }
         hiding = false
-        master.from = 0f; master.to = 0f; master.ms = 2000.0; master.go(1f, now(), 0.0)
+        master.from = 0f; master.to = 0f; master.ms = 2000.0
+        waiting = true; shownAt = now()
         view.visibility = View.VISIBLE
+        // the surface only reaches the screen with the window's next frame, and a still page draws none,
+        // so ask for one now, and only count the fade from once that frame (and the surface in it) is up
+        committed = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+        if (!committed) view.viewTreeObserver.registerFrameCommitCallback { committed = true; kick() }
+        (view.parent as View).invalidate()
         handler.removeCallbacks(drift); handler.postDelayed(drift, 60_000)
         kick()
     }
@@ -111,7 +125,8 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
         val on = HashMap<Int, Double>()
         val list = o.getJSONArray("on")
         for (k in 0 until list.length()) list.getJSONArray(k).let { on[it.getInt(0)] = it.getDouble(1) }
-        fades.forEachIndexed { i, f -> f.go(if (i in on) 1f else 0f, t, (on[i] ?: 0.0) * 1000) }
+        // words go out in 1.2s and come in over 2.4s; the page starts the new ones once the old are out
+        fades.forEachIndexed { i, f -> if (i in on) f.go(1f, t, on.getValue(i) * 1000, 2400.0) else f.go(0f, t, 0.0, 1200.0) }
         val n = o.optInt("dots")
         dots.forEachIndexed { i, f -> f.go(if (i < n) 1f else 0f, t, 0.0) }
         showDots = o.optBoolean("showDots")
@@ -122,14 +137,14 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
     fun hide() {
         if (view.visibility != View.VISIBLE || hiding) return
         hiding = true
-        master.go(0f, now(), 0.0); master.ms = 500.0
+        master.go(0f, now(), 0.0, 300.0) // the page brings Home back once this has cleared
         handler.removeCallbacks(drift)
         kick()
     }
 
     // leaving Home: no fade, it's not on screen
     fun hideNow() {
-        hiding = false
+        hiding = false; waiting = false
         handler.removeCallbacks(drift)
         view.visibility = View.GONE
     }
@@ -146,6 +161,15 @@ class WordClock(private val activity: Activity, parent: FrameLayout) : SurfaceHo
         val t = now()
         val c = holder.lockHardwareCanvas()
         try { draw(c, t) } finally { holder.unlockCanvasAndPost(c) }
+        if (waiting) {
+            if (!committed) { Choreographer.getInstance().postFrameCallback(this); return }
+            // the empty frame is up: start the fade now, and the words' own delays from now rather than from show()
+            waiting = false
+            val late = t - shownAt
+            fades.forEach { it.start += late }; dots.forEach { it.start += late }
+            master.go(1f, t, 0.0)
+            Choreographer.getInstance().postFrameCallback(this); return
+        }
         if (hiding && !master.moving(t)) { running = false; hideNow(); return }
         if (master.moving(t) || fades.any { it.moving(t) } || dots.any { it.moving(t) }) Choreographer.getInstance().postFrameCallback(this)
         else running = false

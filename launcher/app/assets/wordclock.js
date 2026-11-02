@@ -61,16 +61,17 @@ document.body.appendChild(el);
 const wc = el.firstChild, grid = wc.firstChild, dots = [...wc.querySelectorAll('.dots i')];
 const letters = [...FLAT].map(ch => grid.appendChild(Object.assign(document.createElement('span'), {textContent:ch})));
 
-let timer = null, drift = null, shown = '', opts = {dots:false, level:'medium'};
+let timer = null, drift = null, waitT = null, outT = null, ready = false, shown = '', opts = {dots:false, level:'medium'};
 
 function render(){
   const d = new Date(), mins = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
   const slot = (opts.dots ? Math.floor(mins / 5) : Math.round(mins / 5)) % 288;
   const extra = opts.dots ? Math.floor(mins) % 5 : 0;
   const key = slot + ':' + extra;
-  if(key === shown) return;
-  // the first words wait for the grid to fade up; later ones wait for the old words to start going
-  const lead = shown ? .9 : 1.6;
+  if(!ready || key === shown) return;
+  // the first words wait for the grid to come most of the way up (here it waits for Home to go too);
+  // later ones wait for the old words to be fully out (1.2s), so two times are never lit together
+  const lead = shown ? 1.2 : native ? 1.6 : 2.8;
   shown = key;
   const on = new Map();
   cells(words(slot)).forEach((cs, wi) => cs.forEach(i => on.set(i, lead + wi * .35)));
@@ -92,8 +93,13 @@ function show(){
   letters.forEach(e => e.classList.remove('on'));
   grid.offsetWidth;
   grid.classList.remove('reset');
+  clearTimeout(outT); document.body.classList.remove('wcout');
   document.body.classList.add('wordclock');
-  if(native) Launcher.clockShow(FLAT);
+  // In the app the letters' surface only comes up once the page has gone fully dark (1.2s, wordclock.css):
+  // Android builds it afresh each time and briefly disturbs the window while it does (a stale frame, a
+  // misplaced edge), which can't show against a screen that's already one even dark.
+  ready = !native;
+  if(native) waitT = setTimeout(() => { ready = true; Launcher.clockShow(FLAT); render(); }, 1250);
   render();
   timer = setInterval(render, 5000);
   // burn-in: the lit words move every five minutes anyway; the whole grid drifts a few px every minute too
@@ -101,8 +107,11 @@ function show(){
 }
 function hide(){
   if(!timer) return;
+  clearTimeout(waitT); ready = false;
   clearInterval(timer); clearInterval(drift); timer = drift = null;
   if(native) Launcher.clockHide();
+  // Home waits for the clock to clear (wordclock.css), then the hold comes off
+  document.body.classList.add('wcout'); clearTimeout(outT); outT = setTimeout(() => document.body.classList.remove('wcout'), 700);
   document.body.classList.remove('wordclock');
 }
 function set(o){

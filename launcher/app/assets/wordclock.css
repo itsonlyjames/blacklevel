@@ -2,18 +2,30 @@
    lit ones are a warm champagne. Only colour, weight and opacity animate, and only when the words change.
    The TV draws Android at 1080p and scales it up 2×, so lit letters get heavier strokes and no glow
    (a glow scaled up reads as soft focus). In the app WordClock.kt draws the letters the same way. */
-#wordclock{position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:oklch(10% .005 60);
+/* the TV's view runs a few px past the page's 1920×1080, so the dark overhangs the edges and the page's
+   backdrop darkens with it; otherwise Home's slightly lighter background shows as a strip down the side */
+html{transition:background-color .3s var(--ease)}
+html:has(> body.wordclock){background:oklch(10% .005 60);transition:background-color 0s 1.2s}
+#wordclock{position:fixed;inset:-40px;z-index:2;display:grid;place-items:center;background:oklch(10% .005 60);
   --lit:oklch(var(--wc-l,97%) .03 84);
-  opacity:0;visibility:hidden;transition:opacity .5s var(--ease),visibility 0s .5s}
-body.wordclock #wordclock{opacity:1;visibility:visible;transition:opacity 2s ease-in-out}
-body.wordclock #stage{opacity:0;transition:opacity 2s ease-in-out}
-#wordclock .wc{position:relative;transition:transform 8s ease-in-out}
+  opacity:0;visibility:hidden;transition:opacity .3s var(--ease),visibility 0s .3s}
+/* in turn, so no text sits over other text: Home (or Customise) goes as the dark comes up, then the grid
+   fades in on the empty dark, then the words light. Going back, the clock clears before Home returns. */
+body.wordclock #wordclock{opacity:1;visibility:visible;transition:opacity 1.2s ease-in-out}
+/* only the dark layer fades: several layers fading together can fall a frame out of step on the TV and
+   flicker, so Home just switches off underneath once the dark has covered it */
+body.wordclock #stage,body.wordclock #panel{opacity:0;transition:opacity 0s 1.2s}
+body.wcout #stage,body.wcout #panel{transition:opacity .35s var(--ease) .25s}
+#wordclock .wc{position:relative;opacity:0;transition:transform 8s ease-in-out,opacity .3s}
+body.wordclock #wordclock .wc{opacity:1;transition:transform 8s ease-in-out,opacity 2s ease-in-out 1.2s}
 /* in the app the letters are drawn natively at 4K, over this background (WordClock.kt) */
 #wordclock.native .wc{display:none}
 #wordclock .grid{display:grid;grid-template-columns:repeat(11,92px);grid-auto-rows:84px}
 #wordclock .grid span{position:relative;display:grid;place-items:center;font:300 44px Text;color:oklch(17.5% .006 62);
+  transition:color 1.2s ease-in-out var(--d,0s),font-weight 1.2s ease-in-out var(--d,0s)}
+/* words go out in 1.2s and the next ones only start once they're out (wordclock.js), so two times are never lit at once */
+#wordclock .grid span.on{color:var(--lit);font-weight:440;
   transition:color 2.4s ease-in-out var(--d,0s),font-weight 2.4s ease-in-out var(--d,0s)}
-#wordclock .grid span.on{color:var(--lit);font-weight:440}
 #wordclock .grid.reset span{transition:none}
 /* minute dots: one for each minute past the five, small and below the grid */
 #wordclock .dots{position:absolute;left:50%;bottom:-56px;display:flex;gap:18px;transform:translateX(-50%)}

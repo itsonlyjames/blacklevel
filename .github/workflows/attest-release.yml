@@ -1,0 +1,80 @@
+# Attest release assets.
+#
+# Blacklevel releases are built, Developer ID signed and notarised locally by
+# release.sh, which uploads them to the GitHub release. This workflow then
+# downloads those published files, checks them against SHA256SUMS.txt and
+# records a GitHub build provenance attestation for each one.
+#
+# What that proves: the files you download are byte-for-byte the files that
+# were attached to this repository's release when this workflow ran.
+# What it does not prove: that they were built in CI or from a particular
+# commit. The build happens on the maintainer's Mac, not here.
+#
+# Runs automatically when a release is published. To attest an existing
+# release, run it by hand with the tag, e.g.
+#   gh workflow run attest-release.yml -f tag=v1.4.0
+
+name: Attest release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attest (e.g. v1.4.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: attest-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate tag
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag must look like v1.2.3"
+            exit 1
+          fi
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir assets
+          gh release download "$TAG" --repo "$REPO" --dir assets \
+            --pattern "BlacklevelRemote-$VERSION-macOS.zip" \
+            --pattern "BlacklevelHome-$VERSION.apk" \
+            --pattern SHA256SUMS.txt
+          ls -l assets
+
+      - name: Verify checksums
+        working-directory: assets
+        run: |
+          for f in "BlacklevelRemote-$VERSION-macOS.zip" "BlacklevelHome-$VERSION.apk" SHA256SUMS.txt; do
+            [ -f "$f" ] || { echo "::error::Missing release asset $f"; exit 1; }
+          done
+          shasum -a 256 -c SHA256SUMS.txt
+
+      - name: Attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            assets/BlacklevelRemote-${{ env.VERSION }}-macOS.zip
+            assets/BlacklevelHome-${{ env.VERSION }}.apk
+            assets/SHA256SUMS.txt

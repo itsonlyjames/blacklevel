@@ -33,6 +33,8 @@ Both parts are independent. Use either, or both.
 
 To check a download yourself, put it next to the release's `SHA256SUMS.txt` and run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`; for the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
 
+From v1.4.0, each release's files also carry a GitHub attestation, so with the [GitHub CLI](https://cli.github.com) you can run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. It confirms the file is the one published on this repo's release; the apps themselves are built and notarised locally, not in CI.
+
 ---
 
 <a name="prompt-your-agent"></a>

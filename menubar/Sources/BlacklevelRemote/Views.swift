@@ -162,7 +162,7 @@ struct MenuView: View {
         .tint(Theme.accent)
         .environment(\.colorScheme, .dark)
         .onAppear { store.startPolling() }
-        .onDisappear { store.stopPolling() }
+        .onDisappear { store.stopPolling(); store.screenshotStatus = nil }
     }
 
     @State private var contentHeight: CGFloat = 0
@@ -243,8 +243,16 @@ struct MenuView: View {
             if store.canScreenshot {
                 Button { store.takeScreenshot() } label: { Image(systemName: "camera") }
                     .help("Screenshot to Pictures")
+                    .disabled(store.takingScreenshot)
+                // Screenshot progress and failures sit next to the button that started them.
+                if store.takingScreenshot {
+                    ProgressView().controlSize(.mini)
+                } else if let status = store.screenshotStatus {
+                    Text(status).font(.caption).foregroundStyle(Theme.accent).lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Spacer()
+            Spacer(minLength: 4)
             Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .help("Refresh")
             Button("Quit") { NSApp.terminate(nil) }

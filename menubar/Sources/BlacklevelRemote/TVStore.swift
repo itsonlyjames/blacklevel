@@ -108,6 +108,9 @@ final class TVStore: ObservableObject {
     @Published var methods: [String: [String: [String]]] = [:]   // service -> method -> versions
     @Published var message: String?
     @Published var screenshot: NSImage?
+    /// Progress or failure of the last screenshot, shown by the camera button rather than in the header.
+    @Published var screenshotStatus: String?
+    @Published var takingScreenshot = false
 
     /// False until the first power check answers (or fails), so cached data isn't shown as "On" or "Not connected".
     @Published var liveChecked = false
@@ -523,24 +526,37 @@ final class TVStore: ObservableObject {
     var canScreenshot: Bool { (authorized == true && supports("system", "getScreenshot")) || adbAvailable }
 
     func takeScreenshot() {
+        guard !takingScreenshot else { return }
         let version = methods["system"]?["getScreenshot"]?.sorted().last ?? "1.0"
-        perform {
-            var image: NSImage?
-            if self.authorized == true, self.supports("system", "getScreenshot"),
-               let result = try? await self.client.call("system", "getScreenshot", version: version) {
-                image = try await Self.image(from: result, host: self.host)
+        takingScreenshot = true
+        screenshotStatus = nil
+        Task {
+            do {
+                try await captureScreenshot(version: version)
+                self.set(\.screenshotStatus, nil)
+            } catch {
+                self.set(\.screenshotStatus, error.localizedDescription)
             }
-            if image == nil, self.adbAvailable {
-                image = NSImage(data: try await ADB.screenshot(host: self.host))
-            }
-            guard let image else { throw BraviaError.transport("The TV couldn't take a screenshot") }
-            self.screenshot = image
-            let url = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("BRAVIA \(Date().formatted(.iso8601)).png".replacingOccurrences(of: ":", with: "."))
-            if let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-                try png.write(to: url)
-                NSWorkspace.shared.activateFileViewerSelecting([url])
-            }
+            self.set(\.takingScreenshot, false)
+        }
+    }
+
+    private func captureScreenshot(version: String) async throws {
+        var image: NSImage?
+        if self.authorized == true, self.supports("system", "getScreenshot"),
+           let result = try? await self.client.call("system", "getScreenshot", version: version) {
+            image = try await Self.image(from: result, host: self.host)
+        }
+        if image == nil, self.adbAvailable {
+            image = NSImage(data: try await ADB.screenshot(host: self.host))
+        }
+        guard let image else { throw BraviaError.transport("The TV couldn't take a screenshot") }
+        self.screenshot = image
+        let url = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BRAVIA \(Date().formatted(.iso8601)).png".replacingOccurrences(of: ":", with: "."))
+        if let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            try png.write(to: url)
+            NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     }
 

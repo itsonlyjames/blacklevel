@@ -8,21 +8,6 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
   <img src="docs/images/social-hero.png" alt="Blacklevel Home on a TV, with the Blacklevel Remote open from the Mac menu bar" width="100%">
 </p>
 
-## What's in the box
-
-| | Runs on | What it is |
-|---|---|---|
-| **[Blacklevel Home](launcher/)** | The TV (Android TV / Google TV) | A replacement home screen. The time, one row of your apps, one row of your HDMI inputs, and Settings. Nothing else. Built for OLED: dark, dims when idle, drifts to avoid burn-in. ~150 KB. |
-| **[Blacklevel Remote](menubar/)** | macOS 14+ | A SwiftUI menu bar remote: power, volume, inputs, apps, D-pad, playback, picture and sound settings, text entry, screenshots. Uses Sony's BRAVIA REST API and IRCC codes. |
-
-<p align="center">
-  <img src="docs/images/home-layouts.webp" alt="Blacklevel Home's layouts: app names, icons, tiles, a vertical column of icons or names, and the idle word clock" width="100%">
-</p>
-
-<p align="center">
-  <img src="docs/images/remote-settings.png" alt="Blacklevel Remote menu bar window, with the Picture and Sound sections expanded alongside" width="680">
-</p>
-
 ## Quick start
 
 1. **Prepare the TV**: turn on IP control with a pre-shared key, and (for Home) network debugging. See [TV setup](docs/tv-setup.md).
@@ -31,11 +16,27 @@ Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a
 
 Both parts are independent. Use either, or both.
 
-To check a download yourself, put it next to the release's `SHA256SUMS.txt` and run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`; for the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
+## What's in the box
 
-From v1.4.0, each release's files also carry a GitHub attestation, so with the [GitHub CLI](https://cli.github.com) you can run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. It confirms the file is the one published on this repo's release; the apps themselves are built and notarised locally, not in CI.
+### [Blacklevel Home](launcher/)
 
----
+A replacement home screen for the TV (Android TV / Google TV). The time, one row of your apps, one row of your HDMI inputs, and Settings. Nothing else. Built for OLED: dark, dims when idle, drifts to avoid burn-in. ~150 KB.
+
+<p>
+  <img src="docs/images/home-layouts.webp" alt="Blacklevel Home's layouts: app names, icons, tiles, a vertical column of icons or names, and the idle word clock" width="100%">
+</p>
+
+### [Blacklevel Remote](menubar/)
+
+A SwiftUI menu bar remote for macOS 14+: power, volume, inputs, apps, D-pad, playback, picture and sound settings, text entry, screenshots. Uses Sony's BRAVIA REST API and IRCC codes.
+
+<p>
+  <img src="docs/images/remote-settings.png" alt="Blacklevel Remote menu bar window, with the Picture and Sound sections expanded alongside" width="680">
+</p>
+
+<a name="compatibility"></a>
+
+Developed and tested on a **Sony XR-65A80J** (2021, Google TV), and should work on most BRAVIA Android TV and Google TV models from 2015 onward. Got a different BRAVIA? [Help test it](docs/compatibility.md).
 
 <a name="prompt-your-agent"></a>
 <p align="center">
@@ -131,9 +132,27 @@ On the internet, the only service either app contacts is GitHub: the update chec
 
 Turn the update checks off with **Settings… → Updates** in the Remote and **Customise → Updates → Updates** on Home. Either updater checks the SHA-256 of the download against the release's `SHA256SUMS.txt` and refuses to install if that file is missing or doesn't match.
 
-## Compatibility
+### Check a download
 
-Developed and tested on a **Sony XR-65A80J** (2021, Google TV), and should work on most BRAVIA Android TV and Google TV models from 2015 onward. Got a different BRAVIA? [Help test it](docs/compatibility.md): what to try, and what to put in the report.
+To check a download yourself, put it next to the release's `SHA256SUMS.txt` and run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`; for the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
+
+From v1.4.0, each release's files also carry a GitHub attestation, so with the [GitHub CLI](https://cli.github.com) you can run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. It confirms the file is the one published on this repo's release; the apps themselves are built and notarised locally, not in CI.
+
+## Documentation
+
+- [TV setup](docs/tv-setup.md): IP control, pre-shared key, remote start, network debugging
+- [Blacklevel Home](launcher/README.md): build, install, customise, revert
+- [Blacklevel Remote](menubar/README.md): build, run, feature list
+- [Troubleshooting](docs/troubleshooting.md)
+- [Compatibility](docs/compatibility.md): tested models, and how to test yours and report it
+- **Changing the code, as an agent or a person?** Read [AGENTS.md](AGENTS.md) first: where things live, the ground rules, and how to check your work.
+
+### Building from source
+
+No Gradle, no Xcode project, no dependencies to fetch.
+
+- **Home** needs `openjdk@17`, `kotlin`, and Android SDK `platforms;android-34` + `build-tools;34.0.0`.
+- **Remote** needs Swift 5.9+ (Xcode Command Line Tools) on macOS 14 or later.
 
 ## Further intentions
 
@@ -145,27 +164,6 @@ Ideas, not promises. The rule stays the same: local network only, no accounts, n
 - **Wider model testing**: confirm behaviour beyond the XR-65A80J and note the differences in [docs/compatibility.md](docs/compatibility.md).
 
 If one of these matters to you, open an issue and say so.
-
-## Contributing
-
-- **An agent, or a person, about to change the code?** Read [AGENTS.md](AGENTS.md) first: where things live, the ground rules, and how to check your work.
-- **Trying it on a TV that isn't the A80J?** See [Compatibility](docs/compatibility.md) for what to test and how to report it.
-
-## Documentation
-
-- [TV setup](docs/tv-setup.md): IP control, pre-shared key, remote start, network debugging
-- [Blacklevel Home](launcher/README.md): build, install, customise, revert
-- [Blacklevel Remote](menubar/README.md): build, run, feature list
-- [Troubleshooting](docs/troubleshooting.md)
-- [Compatibility](docs/compatibility.md): tested models, testing on a new TV
-- [AGENTS.md](AGENTS.md): working on the code
-
-## Building from source
-
-No Gradle, no Xcode project, no dependencies to fetch.
-
-- **Home** needs `openjdk@17`, `kotlin`, and Android SDK `platforms;android-34` + `build-tools;34.0.0`.
-- **Remote** needs Swift 5.9+ (Xcode Command Line Tools) on macOS 14 or later.
 
 ## License
 

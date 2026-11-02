@@ -31,7 +31,7 @@ A replacement home screen for the TV (Android TV / Google TV). The time, one row
 A SwiftUI menu bar remote for macOS 14+: power, volume, inputs, apps, D-pad, playback, picture and sound settings, text entry, screenshots. Uses Sony's BRAVIA REST API and IRCC codes.
 
 <p>
-  <img src="docs/images/remote-settings.png" alt="Blacklevel Remote menu bar window, with the Picture and Sound sections expanded alongside" width="680">
+  <img src="docs/images/remote-menubar.png" alt="Blacklevel Remote open from its icon in the Mac menu bar" width="100%">
 </p>
 
 <a name="compatibility"></a>

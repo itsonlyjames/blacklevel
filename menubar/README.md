@@ -2,7 +2,7 @@
 
 A native SwiftUI menu bar remote for Sony BRAVIA TVs. It uses Sony's BRAVIA REST API and IRCC remote codes, with no third-party code.
 
-<img src="../docs/images/remote-settings.png" alt="Blacklevel Remote, with the Picture and Sound sections expanded alongside" width="680">
+<img src="../docs/images/remote-menubar.png" alt="Blacklevel Remote open from its icon in the Mac menu bar" width="100%">
 
 ## Install
 
@@ -56,6 +56,8 @@ Keep the app in Applications: macOS runs apps opened straight from Downloads fro
 | Screenshot to Pictures | `system.getScreenshot`, or ADB | Yes (ADB doesn't) |
 
 The remote reads the method list, inputs, apps, picture settings and remote keys from the TV at runtime, so it only shows what your TV supports.
+
+<img src="../docs/images/remote-settings.png" alt="The remote beside its Picture and Sound sections, expanded" width="680">
 
 **No key yet?** If `adb` is installed and network debugging is on, the D-pad sends keys with `adb shell input keyevent` instead. You can turn this off in Settings.
 

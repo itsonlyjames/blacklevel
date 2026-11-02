@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Render: brave/chrome --headless --hide-scrollbars --force-device-scale-factor=2 --window-size=1200,700 --screenshot=remote-menubar.png remote-menubar.html -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1200px;height:700px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
+/* desktop: a dim night horizon, no personal wallpaper */
+body{position:relative;background:
+  radial-gradient(900px 380px at 30% 108%, oklch(30% 0.05 55 / .9), transparent 70%),
+  radial-gradient(1200px 600px at 70% 120%, oklch(24% 0.04 250 / .8), transparent 70%),
+  linear-gradient(180deg, oklch(12% 0.02 260), oklch(16% 0.025 255) 60%, oklch(20% 0.03 60))}
+.hills{position:absolute;left:0;right:0;bottom:0;width:100%;height:300px}
+/* macOS menu bar */
+.menubar{position:absolute;inset:0 0 auto 0;height:26px;background:oklch(14% 0.015 260 / .55);backdrop-filter:blur(30px);display:flex;align-items:center;padding:0 10px;font-size:13px;color:oklch(96% 0 0);text-shadow:0 0 1px #0004}
+.menubar .left{display:flex;align-items:center;gap:20px;padding-left:8px}
+.menubar .apple{font-size:15px;margin-right:2px}
+.menubar b{font-weight:700}
+.menubar .right{margin-left:auto;display:flex;align-items:center;gap:16px;padding-right:6px}
+.menubar svg{display:block;width:16px;height:16px}
+.menubar .tv{display:flex;align-items:center;justify-content:center;width:32px;height:22px;margin:0 -8px;border-radius:5px;background:oklch(100% 0 0 / .2)}
+/* popover under the menu bar icon */
+.remote{position:absolute;top:32px;right:110px;width:320px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px oklch(100% 0 0 / .12),0 24px 70px -8px #000c,0 8px 24px #0007}
+.remote img{display:block;width:100%}
+</style></head><body>
+<svg class="hills" viewBox="0 0 1200 300" preserveAspectRatio="none">
+  <path d="M0 190 L140 120 L230 160 L360 70 L470 150 L560 110 L700 175 L820 95 L930 150 L1060 105 L1200 160 V300 H0Z" fill="oklch(13% 0.02 250)"/>
+  <path d="M0 240 L180 200 L320 225 L480 180 L640 230 L800 195 L960 235 L1100 205 L1200 220 V300 H0Z" fill="oklch(9% 0.012 250)"/>
+</svg>
+
+<div class="menubar">
+  <div class="left"><span class="apple">&#xF8FF;</span><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></div>
+  <div class="right">
+    <span class="tv"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1.5"/><path d="M5 13.5h6"/></svg></span>
+    <svg viewBox="0 0 22 12" style="width:24px" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y=".5" width="18" height="11" rx="3"/><rect x="2.5" y="2.5" width="12" height="7" rx="1.5" fill="currentColor"/><path d="M20.5 4v4" stroke-width="1.5"/></svg>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.8 6.2a9 9 0 0 1 12.4 0M4.2 8.8a5.6 5.6 0 0 1 7.6 0"/><circle cx="8" cy="11.8" r="1.2" fill="currentColor" stroke="none"/></svg>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="4" rx="2"/><circle cx="5" cy="5" r="1.1" fill="currentColor" stroke="none"/><rect x="1.5" y="9" width="13" height="4" rx="2"/><circle cx="11" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg>
+    <span>Mon 2 Nov&nbsp;&nbsp;4:49 pm</span>
+  </div>
+</div>
+
+<div class="remote"><img src="remote-menu.png"></div>
+</body></html>

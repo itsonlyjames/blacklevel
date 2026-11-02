@@ -5,7 +5,8 @@
 #   ./release.sh 1.1.0 --dry-run   build, sign and notarise only: no commit, tag, push or upload
 #   --no-scan                      skip the check for private details in the notes and built apps
 # Notes come from release/<version>/NOTES.md. Signing uses the Developer ID certificate and the
-# "blacklevel" notarytool profile in your keychain; neither leaves this Mac.
+# "blacklevel" notarytool profile in your keychain, and the SSH key in git's user.signingkey for the
+# tag and SHA256SUMS.txt.sig; none of them leaves this Mac.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -30,6 +31,7 @@ APP=menubar/build/BlacklevelRemote.app
 ZIP=$OUT/BlacklevelRemote-$VERSION-macOS.zip
 APK=$OUT/BlacklevelHome-$VERSION.apk
 PROFILE=blacklevel
+SIGNERS=docs/allowed_signers
 
 fail() { echo "✗ $*" >&2; exit 1; }
 step() { printf '\n→ %s\n' "$*"; }
@@ -42,6 +44,9 @@ step "Checking"
 IDENTITY=$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')
 [[ -n $IDENTITY ]] || fail "No Developer ID Application certificate in the keychain"
 xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1 || fail "No working notarytool profile \"$PROFILE\""
+SIGNKEY=$(git config user.signingkey || true)
+[[ $(git config gpg.format) == ssh && -f $SIGNKEY ]] || fail "Set git's gpg.format to ssh and user.signingkey to the release key's .pub"
+grep -qF "$(cut -d' ' -f2 "$SIGNKEY")" "$SIGNERS" || fail "The signing key isn't in $SIGNERS"
 if (( !DRY )); then
   [[ -z $(git status --porcelain --untracked-files=no) ]] || fail "Commit or stash your changes first"
   gh auth status >/dev/null 2>&1 || fail "gh isn't logged in"
@@ -83,7 +88,7 @@ rm "$ZIP"
 ditto -c -k --keepParent --norsrc --noextattr "$APP" "$ZIP"
 
 step "Building Blacklevel Home"
-launcher/build.sh >/dev/null
+RELEASE=1 launcher/build.sh >/dev/null
 cp launcher/build/home.apk "$APK"
 
 # The pre-push hook guards git pushes; the notes and apps go to GitHub without it, so run its checks here.
@@ -101,6 +106,11 @@ if (( SCAN )) && [[ -x $HOOK ]]; then
 fi
 
 (cd "$OUT" && shasum -a 256 "$(basename "$ZIP")" "$(basename "$APK")" > SHA256SUMS.txt)
+step "Signing SHA256SUMS.txt"
+rm -f "$OUT/SHA256SUMS.txt.sig"
+ssh-keygen -q -Y sign -f "$SIGNKEY" -n file "$OUT/SHA256SUMS.txt"
+ssh-keygen -q -Y verify -f "$SIGNERS" -I blacklevel -n file -s "$OUT/SHA256SUMS.txt.sig" < "$OUT/SHA256SUMS.txt" >/dev/null \
+  || fail "SHA256SUMS.txt.sig doesn't verify against $SIGNERS"
 
 step "Ready: $TAG"
 ls -lh "$ZIP" "$APK" | awk '{print "  " $5 "\t" $9}'
@@ -121,8 +131,8 @@ read -r -p "Commit, tag $TAG, push and create a $KIND release? [y/N] " answer
 git add "$PLIST" "$MANIFEST"
 git commit -q -m "chore: release $VERSION"
 trap - EXIT
-git tag -a "$TAG" -m "Blacklevel $VERSION"
+git tag -s "$TAG" -m "Blacklevel $VERSION"
 git push -q origin main "$TAG"
 (( PUBLISH )) && DRAFT=--draft=false || DRAFT=--draft
 gh release create "$TAG" "$DRAFT" --verify-tag --title "Blacklevel $VERSION" --notes-file "$NOTES" \
-  "$ZIP" "$APK" "$OUT/SHA256SUMS.txt"
+  "$ZIP" "$APK" "$OUT/SHA256SUMS.txt" "$OUT/SHA256SUMS.txt.sig"

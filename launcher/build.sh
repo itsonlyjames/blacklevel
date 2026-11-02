@@ -21,9 +21,15 @@ java -cp "$BT/lib/d8.jar" com.android.tools.r8.R8 --release --min-api 28 --lib "
 (cd build/dex && zip -q ../unsigned.apk classes*.dex)
 "$BT/zipalign" -f -p 4 build/unsigned.apk build/aligned.apk
 
+# Updates only install over an APK signed with the same key, so a release never makes a new one.
+# The password comes from the "blacklevel-keystore" keychain item; without it, the debug default.
 KS=debug.keystore
-[ -f "$KS" ] || keytool -genkeypair -keystore "$KS" -storepass android -keypass android \
-  -alias home -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Home" >/dev/null 2>&1
-"$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
+if [ ! -f "$KS" ]; then
+  [ -z "${RELEASE:-}" ] || { echo "✗ $KS is missing: restore it from your backup (a new key can't update installed copies)" >&2; exit 1; }
+  keytool -genkeypair -keystore "$KS" -storepass android -keypass android \
+    -alias home -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Home" >/dev/null 2>&1
+fi
+export KS_PASS=$(security find-generic-password -s blacklevel-keystore -w 2>/dev/null || echo android)
+"$BT/apksigner" sign --ks "$KS" --ks-pass env:KS_PASS --key-pass env:KS_PASS \
   --out build/home.apk build/aligned.apk
 ls -la build/home.apk

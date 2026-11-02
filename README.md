@@ -134,9 +134,22 @@ Turn the update checks off with **Settings… → Updates** in the Remote and **
 
 ### Check a download
 
-To check a download yourself, put it next to the release's `SHA256SUMS.txt` and run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`; for the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
+Put the downloads in one folder and run:
 
-From v1.4.0, each release's files also carry a GitHub attestation, so with the [GitHub CLI](https://cli.github.com) you can run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. It confirms the file is the one published on this repo's release; the apps themselves are built and notarised locally, not in CI.
+```bash
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing
+```
+
+In releases after 1.4.1, `SHA256SUMS.txt` is signed with the release key in [docs/allowed_signers](docs/allowed_signers), so you can check the checksums came from the maintainer and not just from the release page:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/itsonlyjames/blacklevel/main/docs/allowed_signers
+ssh-keygen -Y verify -f allowed_signers -I blacklevel -n file -s SHA256SUMS.txt.sig < SHA256SUMS.txt
+```
+
+The same key signs release tags (in a clone, `git -c gpg.ssh.allowedSignersFile=docs/allowed_signers tag -v <tag>`, from the same releases). The APK is signed with a certificate whose SHA-256 is `2b2bf7edf53bd0d90f68f0c7825a7e14bb3d2de113897b6e35c1ab02868fcdcc`; `apksigner verify --print-certs BlacklevelHome-<version>.apk` should show it. For the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
+
+From v1.4.0, each release's files also carry a GitHub attestation: with the [GitHub CLI](https://cli.github.com), run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. It confirms the file is the one published on this repo's release; the apps themselves are built and notarised locally, not in CI.
 
 ## Documentation
 

@@ -1,0 +1,2 @@
+# Keys that sign Blacklevel release tags and SHA256SUMS.txt.sig. See "Check a download" in the README.
+* namespaces="git,file" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFOtGnGbn3ZRiTgJUY2dsNFyeaS44aLUYVWc+4WQRA95

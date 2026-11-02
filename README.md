@@ -5,16 +5,26 @@
 Blacklevel replaces the busy parts of a Sony BRAVIA Google TV with quiet ones: a dark, typographic home screen with no ads or recommendation rows, and a native macOS menu bar remote. No accounts, no cloud, no third-party code. Everything talks to the TV over your local network. The only internet service either app contacts is GitHub, to check this repo's Releases for updates, which you can turn off. [What talks to what](#what-talks-to-what) has the details.
 
 <p align="center">
-  <img src="docs/images/social-hero.png" alt="Blacklevel Home on a TV, with the Blacklevel Remote open from the Mac menu bar" width="100%">
+  <img src="docs/images/hero-noise.png" alt="A busy grid of ads and recommendation tiles fading out into black, leaving only the time and a quiet row of app names: Netflix, YouTube, Plex" width="100%">
 </p>
+
+<br>
 
 ## Quick start
 
 1. **Prepare the TV**: turn on IP control with a pre-shared key, and (for Home) network debugging. See [TV setup](docs/tv-setup.md).
+
 2. **Remote**: download `BlacklevelRemote-<version>-macOS.zip` from [Releases](https://github.com/itsonlyjames/blacklevel/releases/latest), move the app to Applications and open it (it's signed and notarised), then enter the TV's address and key in **Settings…**. Or build it: `cd menubar && ./build.sh`. [More](menubar/README.md)
+
 3. **Home**: download `BlacklevelHome-<version>.apk` from [Releases](https://github.com/itsonlyjames/blacklevel/releases/latest) (or `cd launcher && ./build.sh`), then install and set it as the home screen with `adb`. [More](launcher/README.md)
 
 Both parts are independent. Use either, or both.
+
+<a name="compatibility"></a>
+
+Developed and tested on a **Sony XR-65A80J** (2021, Google TV), and should work on most BRAVIA Android TV and Google TV models from 2015 onward. Got a different BRAVIA? [Help test it](docs/compatibility.md).
+
+<br>
 
 ## What's in the box
 
@@ -26,6 +36,8 @@ A replacement home screen for the TV (Android TV / Google TV). The time, one row
   <img src="docs/images/home-tv.webp" alt="Blacklevel Home on a TV: the time, a row of app names, the HDMI inputs and what's playing" width="100%">
 </p>
 
+<br>
+
 ### [Blacklevel Remote](menubar/)
 
 A SwiftUI menu bar remote for macOS 14+: power, volume, inputs, apps, D-pad, playback, picture and sound settings, text entry, screenshots. Uses Sony's BRAVIA REST API and IRCC codes.
@@ -34,9 +46,11 @@ A SwiftUI menu bar remote for macOS 14+: power, volume, inputs, apps, D-pad, pla
   <img src="docs/images/remote-menubar.png" alt="Blacklevel Remote open from its icon in the Mac menu bar" width="100%">
 </p>
 
-<a name="compatibility"></a>
+<br>
 
-Developed and tested on a **Sony XR-65A80J** (2021, Google TV), and should work on most BRAVIA Android TV and Google TV models from 2015 onward. Got a different BRAVIA? [Help test it](docs/compatibility.md).
+---
+
+<br>
 
 <a name="prompt-your-agent"></a>
 <p align="center">
@@ -115,7 +129,11 @@ work out the likely cause, and run only read-only checks (adb devices, the Remot
 
 </details>
 
+<br>
+
 ---
+
+<br>
 
 ## What talks to what
 
@@ -132,17 +150,25 @@ On the internet, the only service either app contacts is GitHub: the update chec
 
 Turn the update checks off with **Settings… → Updates** in the Remote and **Customise → Updates → Updates** on Home. Either updater checks the SHA-256 of the download against the release's `SHA256SUMS.txt` and refuses to install if that file is missing or doesn't match.
 
+<br>
+
 ## Verified releases
 
 Every release is checkable, and none of it relies on taking this README's word for it:
 
 - **Attested on GitHub.** From v1.4.0, a GitHub Actions workflow ([attest-release.yml](.github/workflows/attest-release.yml)) checks each release's files against `SHA256SUMS.txt` and signs a provenance attestation for them. They're listed on the repo's [Attestations](https://github.com/itsonlyjames/blacklevel/attestations) page; each one names the commit, the tag and the workflow run, and the SHA-256 of every file.
+
 - **The APK is rebuilt from source.** From v1.4.1, a second workflow ([reproduce-apk.yml](.github/workflows/reproduce-apk.yml)) checks out the release's tag, builds Blacklevel Home on a GitHub runner with the same pinned toolchain, and compares it with the published APK. Only the signature may differ, and the published APK must carry the release certificate. When both hold, it attests the APK, so the attestation says it was built from that source.
+
 - **Recorded in a public log.** Each attestation is also written to [Sigstore](https://www.sigstore.dev)'s public transparency log, which can't be edited afterwards, so a release can't be quietly re-attested later. The attestation's Actions run links to its log entry.
+
 - **Signed by the maintainer.** In releases after 1.4.1, the tag and `SHA256SUMS.txt` are signed with the key in [docs/allowed_signers](docs/allowed_signers), and GitHub marks the tag as Verified.
+
 - **Signed apps.** The Mac app is signed with a Developer ID and notarised by Apple; the APK is always signed with the same certificate, so Android only installs updates from it.
 
-What this proves: the files are exactly the ones this repo's release published, and the APK was built from the tagged source. What it doesn't: the Mac app is signed and notarised on the maintainer's Mac, and rebuilding it byte for byte depends on the exact Xcode version, so it isn't rebuilt in CI. Its Developer ID signature and Apple's notarisation tie it to the maintainer instead. Signing keys never leave that Mac, so a compromised workflow could at worst publish a misleading attestation, never a signed app or update.
+What this proves: the files are exactly the ones this repo's release published, and the APK was built from the tagged source.
+
+What it doesn't: the Mac app is signed and notarised on the maintainer's Mac, and rebuilding it byte for byte depends on the exact Xcode version, so it isn't rebuilt in CI. Its Developer ID signature and Apple's notarisation tie it to the maintainer instead. Signing keys never leave that Mac, so a compromised workflow could at worst publish a misleading attestation, never a signed app or update.
 
 ### Check a download
 
@@ -159,9 +185,17 @@ curl -fsSLO https://raw.githubusercontent.com/itsonlyjames/blacklevel/main/docs/
 ssh-keygen -Y verify -f allowed_signers -I blacklevel -n file -s SHA256SUMS.txt.sig < SHA256SUMS.txt
 ```
 
-The same key signs release tags (in a clone, `git -c gpg.ssh.allowedSignersFile=docs/allowed_signers tag -v <tag>`, from the same releases). The APK is signed with a certificate whose SHA-256 is `2b2bf7edf53bd0d90f68f0c7825a7e14bb3d2de113897b6e35c1ab02868fcdcc`; `apksigner verify --print-certs BlacklevelHome-<version>.apk` should show it. For the Mac app, `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
+You can also check each part on its own:
+
+- **Release tags** are signed with the same key. In a clone, from the same releases: `git -c gpg.ssh.allowedSignersFile=docs/allowed_signers tag -v <tag>`.
+
+- **The APK** is signed with a certificate whose SHA-256 is `2b2bf7edf53bd0d90f68f0c7825a7e14bb3d2de113897b6e35c1ab02868fcdcc`; `apksigner verify --print-certs BlacklevelHome-<version>.apk` should show it.
+
+- **The Mac app**: `spctl -a -vv /Applications/BlacklevelRemote.app` should say it's accepted and notarised.
 
 From v1.4.0, each release's files also carry a GitHub attestation: with the [GitHub CLI](https://cli.github.com), run `gh attestation verify <file> --repo itsonlyjames/blacklevel`. To check the APK was rebuilt from source (from v1.4.1), add `--signer-workflow itsonlyjames/blacklevel/.github/workflows/reproduce-apk.yml`.
+
+<br>
 
 ## Documentation
 
@@ -179,16 +213,23 @@ No Gradle, no Xcode project, no dependencies to fetch.
 - **Home** needs `openjdk@17`, `kotlin`, and Android SDK `platforms;android-34` + `build-tools;34.0.0`.
 - **Remote** needs Swift 5.9+ (Xcode Command Line Tools) on macOS 14 or later.
 
+<br>
+
 ## Further intentions
 
 Ideas, not promises. The rule stays the same: local network only, no accounts, no cloud, no third-party code.
 
 - **Mobile remote**: an iPhone (and maybe Android) app with the same features as the menu bar remote, built on the same BRAVIA REST API and IRCC calls. A phone remote that does only what the TV needs, without the vendor app's sign-in and suggestions.
+
 - **Windows tray remote**: the menu bar remote for Windows, living in the system tray. Same feature set, same "reads what your TV supports at runtime" approach.
+
 - **Shared API layer**: as more clients appear, write down the BRAVIA calls each one depends on (methods, IRCC codes, quirks per model) so every client behaves the same way.
+
 - **Wider model testing**: confirm behaviour beyond the XR-65A80J and note the differences in [docs/compatibility.md](docs/compatibility.md).
 
 If one of these matters to you, open an issue and say so.
+
+<br>
 
 ## License
 

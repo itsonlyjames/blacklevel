@@ -6,6 +6,7 @@
     <key>CFBundleDisplayName</key><string>Blacklevel Remote</string>
     <key>CFBundleIdentifier</key><string>io.github.itsonlyjames.blacklevel.remote</string>
     <key>CFBundleExecutable</key><string>BlacklevelRemote</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.4.2</string>
     <key>CFBundleVersion</key><string>8</string>

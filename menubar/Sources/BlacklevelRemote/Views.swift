@@ -31,7 +31,7 @@ struct BlacklevelRemoteApp: App {
         MenuBarExtra {
             MenuView().environmentObject(store)
         } label: {
-            Image(systemName: store.isOn ? "tv.fill" : "tv")
+            Image(nsImage: MenuBarIcon.image(on: store.isOn))
         }
         .menuBarExtraStyle(.window)
 
@@ -39,6 +39,39 @@ struct BlacklevelRemoteApp: App {
             SettingsView().environmentObject(store)
         }
         .windowResizability(.contentSize)
+    }
+}
+
+// MARK: - Menu bar icon
+
+/// The app icon's level line, drawn as a TV: off is the frame and the line, on lights everything above the line.
+/// A template image on an 18 pt grid, so macOS tints it for light and dark menu bars.
+enum MenuBarIcon {
+    private static let off = draw(on: false)
+    private static let lit = draw(on: true)
+
+    static func image(on: Bool) -> NSImage { on ? lit : off }
+
+    private static func draw(on: Bool) -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            NSColor.black.setFill()
+            NSColor.black.setStroke()
+            let screen = NSRect(x: 1.9, y: 2.6, width: 14.2, height: 10.2)
+            let frame = NSBezierPath(roundedRect: screen, xRadius: 1.6, yRadius: 1.6)
+            frame.lineWidth = 1.3
+            if on {
+                NSGraphicsContext.saveGraphicsState()
+                frame.addClip()
+                NSRect(x: screen.minX, y: screen.minY, width: screen.width, height: 6.4).fill()
+                NSGraphicsContext.restoreGraphicsState()
+            }
+            frame.stroke()
+            NSRect(x: screen.minX, y: 9, width: screen.width, height: 1.5).fill() // the level line, on the golden section
+            NSBezierPath(roundedRect: NSRect(x: 5.5, y: 14.8, width: 7, height: 1.3), xRadius: 0.65, yRadius: 0.65).fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }
 

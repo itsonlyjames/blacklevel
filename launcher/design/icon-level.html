@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Level Icon</title>
+<style>
+/* Throwaway board: the Level direction from icons.html, taken further.
+   The line sits on the golden section (61.8% down). Below it is darker than the field: nothing. Above it, light.
+   Small sizes are drawn on their own (thicker line, stronger glow) rather than scaled down from the big one.
+   The menu bar glyph has two states because the Remote's does: TV off is only the line, TV on lights what is above it. */
+@font-face{font-family:Display;src:url(../app/assets/fonts/InstrumentSerif-Regular.ttf)}
+@font-face{font-family:Text;src:url(../app/assets/fonts/HankenGrotesk.ttf);font-weight:100 900}
+:root{
+  --page:oklch(19% 0.008 60);
+  --ink:oklch(90% 0.025 80);
+  --dim:oklch(52% 0.018 70);
+  --faint:oklch(32% 0.012 65);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--page)}
+body{color:var(--ink);font-family:Text;-webkit-font-smoothing:antialiased;padding:64px 48px 120px;max-width:1240px;margin:0 auto}
+h1{font:400 72px/1 Display;letter-spacing:-.01em}
+.lede{margin-top:16px;max-width:62ch;font-size:16px;line-height:1.6;color:var(--dim)}
+section{padding:56px 0;border-top:1px solid var(--faint);margin-top:56px}
+h2{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:28px}
+.row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:32px}
+.cap{margin-top:10px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.icon{display:block;filter:drop-shadow(0 12px 28px oklch(0% 0 0 / .45))}
+.note{margin-top:22px;max-width:62ch;font-size:14px;line-height:1.6;color:var(--dim)}
+.note b{color:var(--ink);font-weight:500}
+
+/* dock check on two wallpapers */
+.desk{position:relative;flex:1 1 440px;height:200px;border-radius:10px;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px}
+.desk.dark{background:radial-gradient(120% 90% at 30% 10%,oklch(38% 0.06 260),oklch(16% 0.03 270))}
+.desk.light{background:radial-gradient(120% 90% at 70% 10%,oklch(92% 0.03 90),oklch(78% 0.05 60))}
+.dock{display:flex;gap:8px;padding:8px;border-radius:20px;background:oklch(100% 0 0 / .18);backdrop-filter:blur(12px);box-shadow:inset 0 0 0 1px oklch(100% 0 0 / .25)}
+.dock .other{width:56px;height:56px;border-radius:13px}
+
+.banner{display:block;width:480px;max-width:100%;aspect-ratio:16/9;border-radius:6px;box-shadow:0 0 0 1px var(--faint)}
+.tvrow{display:flex;gap:6px;padding:14px;background:oklch(12% 0.004 250);border-radius:8px}
+.tvrow .other{width:160px;height:90px;border-radius:4px}
+.tvrow svg{width:160px;height:90px;border-radius:4px;display:block}
+.tvrow .focus{outline:3px solid #fff;outline-offset:3px;border-radius:4px}
+
+/* menu bar glyphs */
+.glyphs{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px}
+.g{padding:22px;border-radius:10px;background:oklch(16% 0.006 60)}
+.g h3{font:400 30px/1 Display}
+.g p{margin-top:8px;font-size:13px;line-height:1.55;color:var(--dim);min-height:60px}
+.big{display:flex;gap:14px;margin:18px 0}
+.big div{flex:1;text-align:center}
+.big svg{width:100%;max-width:126px;height:auto;aspect-ratio:1;display:block;margin:0 auto;color:var(--ink);background:oklch(12% 0.006 60);border-radius:6px}
+.bar{display:flex;align-items:center;justify-content:flex-end;gap:16px;height:26px;padding:0 12px;border-radius:5px;margin-top:6px;font-size:12.5px;font-weight:500}
+.bar.dark{background:oklch(26% 0.004 60);color:#fff}
+.bar.light{background:oklch(94% 0.004 80);color:#000}
+.bar span{opacity:.85}
+.bar .dot{width:15px;height:11px;border-radius:2px;background:currentColor;opacity:.75}
+.bar .dot.r{width:12px;height:12px;border-radius:50%}
+@media (max-width:700px){body{padding:40px 16px}}
+</style>
+</head>
+<body>
+<h1>Level</h1>
+<p class="lede">Black level is the line a picture sits on. Below it, nothing. Above it, everything. The icon is that line and nothing else, placed on the golden section so it feels set, not centred.</p>
+
+<section>
+  <h2>Remote · macOS app icon</h2>
+  <div class="row" id="ramp"></div>
+  <p class="note">From 64 px down each size is redrawn, not shrunk: <b>the line gets thicker and the glow stronger</b> so it stays one crisp pixel row at 16. Below the line is darker than the field above it, so even unlit the icon has a horizon.</p>
+</section>
+
+<section>
+  <h2>In the Dock</h2>
+  <div class="row">
+    <div class="desk dark"><div class="dock" data-dock></div></div>
+    <div class="desk light"><div class="dock" data-dock></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Home · Android TV banner</h2>
+  <div class="row" style="align-items:flex-start">
+    <div><div id="banner"></div><div class="cap">320 × 180</div></div>
+    <div><div class="tvrow" id="tvrow"></div><div class="cap">Among other apps, focused</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Remote · menu bar, TV off and on</h2>
+  <div class="glyphs" id="glyphs"></div>
+  <p class="note">The Remote's menu bar icon already changes with the TV (it uses the system <b>tv</b> and <b>tv.fill</b> today). Each glyph keeps that: <b>off is just the line, on lights everything above it</b>, and below stays empty either way. These are template images, one colour plus alpha, so macOS tints them for light and dark bars.</p>
+</section>
+
+<script>
+const AMBER='oklch(74% 0.13 58)', HOT='oklch(88% 0.09 72)';
+const FIELD='oklch(9.5% 0.007 60)', BELOW='oklch(4.5% 0.003 60)';
+const SHAPE='M22.5 0h55C90 0 100 10 100 22.5v55C100 90 90 100 77.5 100h-55C10 100 0 90 0 77.5v-55C0 10 10 0 22.5 0Z';
+const L=61.8;
+let uid=0;
+
+// optical sizes: px → line thickness (in the 100 grid) and glow strength
+const optical=px=>px>=128?{line:2.2,glow:.34,core:.26}:px>=64?{line:2.8,glow:.36,core:.28}:px>=32?{line:4.2,glow:.42,core:.3}:{line:6.4,glow:.5,core:0};
+
+function levelSquare(px){
+  const o=optical(px), i=uid++, t=o.line, top=L-t/2;
+  return `<svg class="icon" width="${px}" height="${px}" viewBox="0 0 100 100">
+  <defs>
+    <clipPath id="c${i}"><path d="${SHAPE}"/></clipPath>
+    <linearGradient id="up${i}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${AMBER}" stop-opacity="${o.glow}"/><stop offset=".5" stop-color="${AMBER}" stop-opacity="${o.glow*.18}"/><stop offset="1" stop-color="${AMBER}" stop-opacity="0"/></linearGradient>
+    <radialGradient id="core${i}" cx="50" cy="${L}" r="46" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 ${L}) scale(1 .42) translate(0 ${-L})"><stop offset="0" stop-color="${HOT}" stop-opacity="${o.core}"/><stop offset="1" stop-color="${HOT}" stop-opacity="0"/></radialGradient>
+    <linearGradient id="ln${i}" x1="0" x2="1"><stop offset="0" stop-color="${AMBER}" stop-opacity=".6"/><stop offset=".5" stop-color="${HOT}"/><stop offset="1" stop-color="${AMBER}" stop-opacity=".6"/></linearGradient>
+    <linearGradient id="dn${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${AMBER}" stop-opacity=".14"/><stop offset="1" stop-color="${AMBER}" stop-opacity="0"/></linearGradient>
+  </defs>
+  <g clip-path="url(#c${i})">
+    <rect width="100" height="${top}" fill="${FIELD}"/>
+    <rect width="100" height="${top}" fill="url(#up${i})"/>
+    <rect width="100" height="${top}" fill="url(#core${i})"/>
+    <rect y="${top}" width="100" height="${100-top}" fill="${BELOW}"/>
+    <rect y="${top+t}" width="100" height="3" fill="url(#dn${i})"/>
+    <rect y="${top}" width="100" height="${t}" fill="url(#ln${i})"/>
+    ${px>=64?`<path d="${SHAPE}" fill="none" stroke="oklch(100% 0 0 / .07)" stroke-width="1.2"/>`:''}
+  </g></svg>`;
+}
+
+function levelBanner(){
+  const i=uid++, l=111, t=2.6;
+  return `<svg viewBox="0 0 320 180" class="banner">
+  <defs>
+    <linearGradient id="bu${i}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${AMBER}" stop-opacity=".3"/><stop offset=".55" stop-color="${AMBER}" stop-opacity=".04"/><stop offset="1" stop-color="${AMBER}" stop-opacity="0"/></linearGradient>
+    <radialGradient id="bc${i}" cx="160" cy="${l}" r="150" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 ${l}) scale(1 .35) translate(0 ${-l})"><stop offset="0" stop-color="${HOT}" stop-opacity=".22"/><stop offset="1" stop-color="${HOT}" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bl${i}" x1="0" x2="1"><stop offset="0" stop-color="${AMBER}" stop-opacity=".6"/><stop offset=".5" stop-color="${HOT}"/><stop offset="1" stop-color="${AMBER}" stop-opacity=".6"/></linearGradient>
+  </defs>
+  <rect width="320" height="${l}" fill="${FIELD}"/>
+  <rect width="320" height="${l}" fill="url(#bu${i})"/>
+  <rect width="320" height="${l}" fill="url(#bc${i})"/>
+  <rect y="${l}" width="320" height="${180-l}" fill="${BELOW}"/>
+  <text x="160" y="${l-12}" text-anchor="middle" font-family="Display" font-size="54" letter-spacing="-.3" fill="oklch(92% 0.025 80)">Blacklevel</text>
+  <rect y="${l-t/2}" width="320" height="${t}" fill="url(#bl${i})"/>
+  </svg>`;
+}
+
+// menu bar glyphs on an 18pt grid, one colour plus alpha (template images)
+const glyphs=[
+{
+  name:'Breakout',
+  why:'A screen with the level line running straight through it and out the sides. The line is bigger than the TV. The most distinctive in a crowded bar.',
+  draw:(on,i)=>`
+    ${on?`<path d="M3.9 2.6h10.2a1.5 1.5 0 0 1 1.5 1.5V9.4H2.4V4.1a1.5 1.5 0 0 1 1.5-1.5Z" fill="currentColor"/>`:''}
+    <rect x="2.4" y="2.6" width="13.2" height="9.6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+    <rect x=".3" y="8.5" width="17.4" height="1.5" rx=".75" fill="currentColor"/>
+    <rect x="6" y="14.4" width="6" height="1.2" rx=".6" fill="currentColor"/>`
+},
+{
+  name:'Horizon',
+  why:'A plain TV on a stand, the line drawn across the lower part of its screen. Closest to the system tv symbol it replaces, so it reads instantly.',
+  draw:(on,i)=>`
+    ${on?`<path d="M3.4 2.6h11.2a1.5 1.5 0 0 1 1.5 1.5V9H1.9V4.1a1.5 1.5 0 0 1 1.5-1.5Z" fill="currentColor"/>`:''}
+    <rect x="1.9" y="2.6" width="14.2" height="10.2" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <rect x="1.9" y="9" width="14.2" height="1.5" fill="currentColor"/>
+    <rect x="5.5" y="14.8" width="7" height="1.3" rx=".65" fill="currentColor"/>`
+},
+{
+  name:'Rising',
+  why:'A TV whose frame dissolves upward: solid from the line down, fading above it. Off, it is a ground line; on, light rises out of it like the app icon. The most atmospheric, the hardest at 1×.',
+  draw:(on,i)=>`
+    <defs><linearGradient id="w${i}" gradientUnits="userSpaceOnUse" x1="0" y1="9" x2="0" y2="2"><stop offset="0" stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".22"/></linearGradient>
+    <linearGradient id="f${i}" gradientUnits="userSpaceOnUse" x1="0" y1="9.2" x2="0" y2="2.6"><stop offset="0" stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".3"/></linearGradient></defs>
+    ${on?`<rect x="2.5" y="3.1" width="13" height="6.2" fill="url(#f${i})"/>`:''}
+    <rect x="1.9" y="2.6" width="14.2" height="10.2" rx="1.6" fill="none" stroke="url(#w${i})" stroke-width="1.3"/>
+    <rect x="1.9" y="9" width="14.2" height="1.5" fill="currentColor"/>
+    <rect x="5.5" y="14.8" width="7" height="1.3" rx=".65" fill="currentColor"/>`
+}];
+
+const glyph=(g,on,px=18)=>{const i=uid++;return `<svg width="${px}" height="${px}" viewBox="0 0 18 18">${g.draw(on,i)}</svg>`};
+
+document.getElementById('ramp').innerHTML=[320,128,64,32,16].map(px=>`<div>${levelSquare(px)}<div class="cap">${px}</div></div>`).join('');
+const others=['oklch(62% 0.15 250)','oklch(70% 0.14 150)','oklch(95% 0 0)','oklch(64% 0.2 25)'];
+document.querySelectorAll('[data-dock]').forEach(d=>d.innerHTML=others.slice(0,2).map(c=>`<div class="other" style="background:${c}"></div>`).join('')+levelSquare(56)+others.slice(2).map(c=>`<div class="other" style="background:${c}"></div>`).join(''));
+document.getElementById('banner').innerHTML=levelBanner();
+const tvOthers=['oklch(45% 0.18 25)','oklch(35% 0.12 260)','oklch(55% 0.14 300)'];
+document.getElementById('tvrow').innerHTML=`<div class="other" style="background:${tvOthers[0]}"></div><div class="focus">${levelBanner()}</div><div class="other" style="background:${tvOthers[1]}"></div>`;
+const status=`<span class="dot r"></span><span class="dot"></span>`;
+document.getElementById('glyphs').innerHTML=glyphs.map(g=>`
+<div class="g">
+  <h3>${g.name}</h3><p>${g.why}</p>
+  <div class="big"><div>${glyph(g,false,126)}<div class="cap">Off</div></div><div>${glyph(g,true,126)}<div class="cap">On</div></div></div>
+  <div class="bar dark">${glyph(g,false)}${glyph(g,true)}${status}<span>Tue 3 Nov 9:41</span></div>
+  <div class="bar light">${glyph(g,false)}${glyph(g,true)}${status}<span>Tue 3 Nov 9:41</span></div>
+</div>`).join('');
+</script>
+</body>
+</html>

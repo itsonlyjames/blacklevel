@@ -8,9 +8,10 @@ swift build -c release $ARCHS
 BIN=$(swift build -c release $ARCHS --show-bin-path)
 APP=build/BlacklevelRemote.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/BlacklevelRemote" "$APP/Contents/MacOS/BlacklevelRemote"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns" # drawn by icons/make-icons.swift
 # Signed with a Developer ID when one is in the keychain, so macOS sees every rebuild as the same app
 # (no Keychain prompts); ad hoc otherwise. SIGN_IDENTITY overrides; RELEASE=1 adds the timestamp notarising needs.
 IDENTITY=${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')}

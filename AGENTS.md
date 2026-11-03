@@ -6,6 +6,7 @@ Instructions for coding agents (Claude Code, Codex, Cursor and the like) and for
 
 - `launcher/`: Blacklevel Home. Kotlin `HomeActivity.kt` hosts a WebView; the whole UI is `app/assets/index.html`. Built by `build.sh` with `kotlinc`, `d8` and `aapt2`; no Gradle. Design intent lives in `launcher/.impeccable.md`; read it before touching the UI.
 - `menubar/`: Blacklevel Remote. A Swift package: `BraviaClient.swift` (REST + IRCC), `TVStore.swift` (state), `Views.swift` (SwiftUI), `Support.swift` (keychain, helpers), `SelfTest.swift`. Built by `build.sh`; no Xcode project.
+- `icons/`: `make-icons.swift` draws the Remote's `AppIcon.icns` and Home's TV banner from one source; run it with `swift icons/make-icons.swift` and commit what it writes. The menu bar icon is drawn in code (`MenuBarIcon` in `Views.swift`) to match.
 - `docs/`: user-facing setup, troubleshooting and compatibility. `docs/images/` holds the screenshots used in READMEs.
 
 ## Ground rules

@@ -2,6 +2,21 @@
 
 What changed in each version of Blacklevel Home (the TV launcher) and Blacklevel Remote (the Mac menu bar app). The full notes for each release, with downloads and how to update, are on [GitHub Releases](https://github.com/itsonlyjames/blacklevel/releases) and in `release/<version>/NOTES.md`.
 
+## 1.4.3
+
+### Both apps
+
+- **Changed:** a new icon, Level: a line of light with the dark below it, drawn from the same palette as the home screen.
+
+### Blacklevel Remote (Mac)
+
+- **Added:** an app icon, in Finder, Launchpad and System Settings.
+- **Changed:** the menu bar icon is a TV with the level line across its screen instead of the system TV symbol. It still shows whether the TV is on: when it is, the screen above the line lights up.
+
+### Blacklevel Home (TV)
+
+- **Changed:** the banner in the TV's app list and settings shows the new icon instead of a plain dark tile.
+
 ## 1.4.2
 
 ### Both apps

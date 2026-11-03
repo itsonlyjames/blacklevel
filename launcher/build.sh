@@ -10,7 +10,8 @@ KHOME=$(dirname "$(readlink -f "$(command -v kotlinc)")")/..
 KSTD=$(ls "$KHOME"/libexec/lib/kotlin-stdlib.jar "$KHOME"/lib/kotlin-stdlib.jar 2>/dev/null | head -1 || true)
 
 rm -rf build && mkdir -p build/res build/classes build/dex
-"$BT/aapt2" compile --dir app/res -o build/res.zip
+# --no-crunch ships PNGs as committed: aapt2 re-encodes them differently on macOS and Linux, so CI's rebuild wouldn't match
+"$BT/aapt2" compile --no-crunch --dir app/res -o build/res.zip
 "$BT/aapt2" link -I "$JAR" --manifest app/AndroidManifest.xml -A app/assets build/res.zip \
   --min-sdk-version 28 --target-sdk-version 31 -o build/unsigned.apk
 kotlinc app/src -cp "$JAR" -d build/classes -jvm-target 1.8 -nowarn 2>&1 | grep -v "^warning" || true

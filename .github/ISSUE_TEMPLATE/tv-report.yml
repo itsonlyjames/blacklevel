@@ -1,0 +1,78 @@
+name: TV report
+description: Tell us how Blacklevel did on your TV, whether or not it worked. An agent can fill this in for you.
+title: "TV report: <brand> <model>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a public page. Leave out IP and MAC addresses, serial numbers, pre-shared keys, and network or account names. [Will it work on my TV?](https://github.com/itsonlyjames/blacklevel/blob/main/docs/compatibility.md#will-it-work-on-my-tv) covers what to check first.
+  - type: input
+    id: model
+    attributes:
+      label: Brand and model
+      description: The full model number, from the TV's About screen or the label on the back.
+      placeholder: Sony XR-65A80J
+    validations:
+      required: true
+  - type: input
+    id: software
+    attributes:
+      label: TV software and version
+      description: For example Google TV (Android 12), Android TV 9, Tizen 8 or webOS 24.
+    validations:
+      required: true
+  - type: dropdown
+    id: remote
+    attributes:
+      label: Blacklevel Remote
+      options:
+        - Works
+        - Partly works
+        - Doesn't work
+        - Not tried
+    validations:
+      required: true
+  - type: dropdown
+    id: home
+    attributes:
+      label: Blacklevel Home
+      options:
+        - Works, including the Home button
+        - Runs as an app, not tried as the home screen
+        - Partly works
+        - Doesn't work
+        - Not tried
+    validations:
+      required: true
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked
+      placeholder: Volume, inputs, the app row, surviving a reboot…
+    validations:
+      required: true
+  - type: textarea
+    id: failed
+    attributes:
+      label: What didn't work
+      description: What you tried, what happened, and what you expected. Include anything missing or greyed out.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Self-test and command output
+      description: The Remote's `--selftest` output and any `adb` or `curl` results from the checks. The self-test prints the MAC address and what's playing, so remove those.
+      render: text
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Region, what's plugged into the HDMI ports, anything you changed on the TV first, or who ran the checks (you or an agent).
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Before you post
+      options:
+        - label: I've removed IP and MAC addresses, serial numbers, keys, and network or account names.
+          required: true

@@ -2,6 +2,12 @@
 
 What changed in each version of Blacklevel Home (the TV launcher) and Blacklevel Remote (the Mac menu bar app). The full notes for each release, with downloads and how to update, are on [GitHub Releases](https://github.com/itsonlyjames/blacklevel/releases) and in `release/<version>/NOTES.md`.
 
+## 1.4.4
+
+### Blacklevel Home (TV)
+
+- **Fixed:** the APK is attested again. 1.4.3's new banner was re-encoded differently on the Mac than in CI, so CI's rebuild didn't match and 1.4.3's APK went unattested. PNGs now ship exactly as committed.
+
 ## 1.4.3
 
 ### Both apps

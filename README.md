@@ -59,25 +59,6 @@ A SwiftUI menu bar remote for macOS 14+: power, volume, inputs, apps, D-pad, pla
 
 Rather not do this by hand? Copy a prompt into a coding agent that can run commands on your Mac (Claude Code, Codex, Cursor and the like). Each one tells the agent to explain what it's about to do and wait for your go-ahead before it changes your TV.
 
-<details>
-<summary><b>Will this work on my TV?</b></summary>
-
-```text
-Will Blacklevel (https://github.com/itsonlyjames/blacklevel) work on my TV? It's a
-<brand and model>. Read the "Will it work on my TV?" and "Reporting" sections of
-docs/compatibility.md first, work out which row of the table my TV falls in, and use
-https://cleanyour.tv/tvs to look up what it runs if you need to. Run only the read-only
-checks on that page, and ask me before anything that needs me to change a setting on
-the TV or install something on it. Then tell me plainly whether the Remote and Home
-would work, partly work or not work, and why. If it's anything but a clean yes, or my
-model isn't in the Tested table, draft a report with the fields in
-.github/ISSUE_TEMPLATE/tv-report.yml: what worked, what didn't and the output of each
-check. Remove IP and MAC addresses, serial numbers, keys, and network or account names.
-Show me the whole draft and open the issue only after I've said yes.
-```
-
-</details>
-
 <details open>
 <summary><b>Install the Remote on my Mac</b></summary>
 
@@ -132,6 +113,25 @@ I installed Blacklevel Home (https://github.com/itsonlyjames/blacklevel) and wan
 Sony TV's stock home screen back. Read the "Revert to the stock home screen" section
 of launcher/README.md, connect to the TV with adb, show me the commands you'll run,
 run them once I agree, then check that pressing Home opens Google TV again.
+```
+
+</details>
+
+<details>
+<summary><b>Will this work on my TV?</b></summary>
+
+```text
+Will Blacklevel (https://github.com/itsonlyjames/blacklevel) work on my TV? It's a
+<brand and model>. Read the "Will it work on my TV?" and "Reporting" sections of
+docs/compatibility.md first, work out which row of the table my TV falls in, and use
+https://cleanyour.tv/tvs to look up what it runs if you need to. Run only the read-only
+checks on that page, and ask me before anything that needs me to change a setting on
+the TV or install something on it. Then tell me plainly whether the Remote and Home
+would work, partly work or not work, and why. If it's anything but a clean yes, or my
+model isn't in the Tested table, draft a report with the fields in
+.github/ISSUE_TEMPLATE/tv-report.yml: what worked, what didn't and the output of each
+check. Remove IP and MAC addresses, serial numbers, keys, and network or account names.
+Show me the whole draft and open the issue only after I've said yes.
 ```
 
 </details>

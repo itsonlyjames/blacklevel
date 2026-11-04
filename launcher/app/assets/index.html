@@ -310,10 +310,16 @@ function build(){
   const v = pref('view')!=='names';
   track.innerHTML = apps.map(a=>`<div class="app">${v?icon(a):''}<span class="nm">${short(a.label)}</span></div>`).join('');
   headline.innerHTML = v ? apps.map(a=>`<span>${a.label}</span>`).join('') : '';
+  buildInputs();
+}
+function buildInputs(){
   inRow.innerHTML = inputs.map(x=>`<div class="inp${x.id==='__customise'?' settings':''}">${x.label}${x.sub?`<small>${x.sub}</small>`:''}</div>`).join('');
 }
+const markInputs = () => [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
 function render(){
   const els = track.children;
+  // before anything below measures the layout: a freshly built name that gets its class after that would fade in
+  [...headline.children].forEach((e,i)=>{ e.classList.toggle('on',i===ai); e.classList.toggle('l',i<ai); });
   [...els].forEach((e,i)=>{e.classList.toggle('sel',row===0&&i===ai);e.classList.toggle('moving',!!moving&&i===ai);e.classList.toggle('past',i<ai)});
   if(pref('layout')==='vertical'){
     // scroll only as far as needed to keep the selected app inside the page margin (the inputs' 150px);
@@ -329,9 +335,8 @@ function render(){
     shift = [-Math.max(0, els[ai].offsetLeft - 1100), 0];
     track.style.transform = `translateX(${shift[0]}px)`;
   } else { shift = [-els[ai].offsetLeft, 0]; track.style.transform = `translateX(${shift[0]}px)`; }
-  [...headline.children].forEach((e,i)=>{ e.classList.toggle('on',i===ai); e.classList.toggle('l',i<ai); });
   document.body.classList.toggle('away', row===1);
-  [...inRow.children].forEach((e,i)=>e.classList.toggle('sel',row===1&&i===ii));
+  markInputs();
   // the light waits for focus to rest, so holding ◀ ▶ through the row doesn't repaint the room at every step
   clearTimeout(lightT); lightT = setTimeout(light, 90);
 }
@@ -620,7 +625,7 @@ window.nowPlaying = n => {
 if(B.nowPlaying) nowPlaying(JSON.parse(B.nowPlaying()));
 
 // called by the app when an HDMI input connects or drops, or device names arrive (they load in the background)
-window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras()); ii = Math.min(ii, inputs.length-1); build(); render(); };
+window.refreshInputs = () => { inputs = JSON.parse(B.inputs()).concat(extras()); ii = Math.min(ii, inputs.length-1); buildInputs(); markInputs(); };
 
 // coming home: the row snaps to the first app (no visible rewind), then the screen settles in from top to bottom
 function enter(){

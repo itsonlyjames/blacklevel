@@ -2,6 +2,12 @@
 
 What changed in each version of Blacklevel Home (the TV launcher) and Blacklevel Remote (the Mac menu bar app). The full notes for each release, with downloads and how to update, are on [GitHub Releases](https://github.com/itsonlyjames/blacklevel/releases) and in `release/<version>/NOTES.md`.
 
+## 1.4.5
+
+### Blacklevel Home (TV)
+
+- **Fixed:** the app name no longer flashes as Home loads. In the icon views, the focused app's name faded in again each time an HDMI input connected or a device name arrived.
+
 ## 1.4.4
 
 ### Blacklevel Home (TV)

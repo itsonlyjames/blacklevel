@@ -2,6 +2,12 @@
 
 What changed in each version of Blacklevel Home (the TV launcher) and Blacklevel Remote (the Mac menu bar app). The full notes for each release, with downloads and how to update, are on [GitHub Releases](https://github.com/itsonlyjames/blacklevel/releases) and in `release/<version>/NOTES.md`.
 
+## 1.4.6
+
+### Blacklevel Remote (Mac)
+
+- **Added:** while the menu is open, the arrow keys move on the TV and Return selects, like the pad. Keys still go to a text field while you're typing in one.
+
 ## 1.4.5
 
 ### Blacklevel Home (TV)

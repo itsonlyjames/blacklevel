@@ -59,6 +59,8 @@ The remote reads the method list, inputs, apps, picture settings and remote keys
 
 <img src="../docs/images/remote-settings.png" alt="The remote beside its Picture and Sound sections, expanded" width="680">
 
+**Keyboard:** while the menu is open, the arrow keys move on the TV and Return selects, unless you're typing in a text field.
+
 **No key yet?** If `adb` is installed and network debugging is on, the D-pad sends keys with `adb shell input keyevent` instead. You can turn this off in Settings.
 
 ## Testing

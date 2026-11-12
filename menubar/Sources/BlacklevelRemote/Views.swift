@@ -188,6 +188,7 @@ struct MenuView: View {
             if abs(rounded - menuHeight) >= 1 { menuHeight = rounded }
         }
         .background(WindowSizer(size: CGSize(width: 320, height: menuHeight)))
+        .background(KeyboardRemote { key in if store.canPress(key) { store.press(key) } })
         // Top-aligned and filled, so a window that's briefly the wrong size shows dark, not a white band.
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.bg)
@@ -358,6 +359,44 @@ private struct WindowSizer: NSViewRepresentable {
     }
 }
 
+/// While the menu is open, the arrow keys move on the TV and Return/Enter selects, like the pad.
+/// Keys go to a text field instead while one is being typed in, and modified keys (⌘←, ⌥↑…) are left alone.
+private struct KeyboardRemote: NSViewRepresentable {
+    let press: (String) -> Void
+
+    private static let keys: [UInt16: String] = [123: "Left", 124: "Right", 125: "Down", 126: "Up", 36: "Confirm", 76: "Confirm"]
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        let coordinator = context.coordinator
+        coordinator.view = view
+        coordinator.press = press
+        coordinator.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak coordinator] event in
+            guard let coordinator, let window = coordinator.view?.window, event.window === window,
+                  event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
+                  !(window.firstResponder is NSText),
+                  let key = Self.keys[event.keyCode] else { return event }
+            coordinator.press(key)
+            return nil
+        }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) { context.coordinator.press = press }
+
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
+        if let monitor = coordinator.monitor { NSEvent.removeMonitor(monitor) }
+    }
+
+    final class Coordinator {
+        weak var view: NSView?
+        var press: (String) -> Void = { _ in }
+        var monitor: Any?
+    }
+}
+
 // MARK: - Volume
 
 /// Keeps the slider's drag value local, so dragging doesn't publish through the store (and redraw the whole menu)
@@ -468,12 +507,7 @@ struct RemotePad: View {
     @EnvironmentObject var store: TVStore
     private let size: CGFloat = 40
 
-    /// Keys the pad can send: IRCC names the TV reported, or the ADB fallback set.
-    private var available: Set<String> {
-        if store.authorized == true && !store.remoteCodes.isEmpty { return Set(store.remoteCodes.keys) }
-        if store.useADBFallback && store.adbAvailable { return Set(ADB.keycodes.keys) }
-        return []
-    }
+    private var available: Set<String> { store.pressableKeys }
 
     var body: some View {
         if available.isEmpty { EmptyView() } else { pad }

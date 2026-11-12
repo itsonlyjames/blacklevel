@@ -487,6 +487,15 @@ final class TVStore: ObservableObject {
         perform { try await self.client.call("appControl", "setActiveApp", params: [["uri": app.uri]]) }
     }
 
+    /// Keys that can be pressed: IRCC names the TV reported, or the ADB fallback set.
+    var pressableKeys: Set<String> {
+        if authorized == true && !remoteCodes.isEmpty { return Set(remoteCodes.keys) }
+        if useADBFallback && adbAvailable { return Set(ADB.keycodes.keys) }
+        return []
+    }
+
+    func canPress(_ key: String) -> Bool { pressableKeys.contains(key) }
+
     /// Presses a remote key: IRCC with a PSK, otherwise ADB if enabled.
     func press(_ key: String) {
         perform {
